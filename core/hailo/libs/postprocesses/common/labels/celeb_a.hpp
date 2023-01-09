@@ -65,7 +65,7 @@ namespace labels
         {9, "Blond_Hair"},
         {10, "Blurry"},
         {11, "Brown_Hair"},
-        {12, ""},
+        {12, "Bushy_Eyebrows"},
         {13, ""},
         {14, ""},
         {15, "Eyeglasses"},
@@ -92,5 +92,5 @@ namespace labels
         {36, "Wearing_Lipstick"},
         {37, "Wearing_Necklace"},
         {38, "Wearing_Necktie"},
-        {39, ""}};
+        {39, "Young"}};
 }

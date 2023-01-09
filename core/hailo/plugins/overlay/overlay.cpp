@@ -15,7 +15,6 @@
 
 #include <opencv2/opencv.hpp>
 #include <algorithm>
-#include <iostream>
 #include "overlay.hpp"
 #include "overlay_utils.hpp"
 #include "hailo_common.hpp"
@@ -27,6 +26,8 @@
 #define TEXT_FONT_FACTOR (0.12f)
 #define MINIMAL_BOX_WIDTH_FOR_TEXT (10)
 #define LANDMARKS_COLOR (cv::Scalar(255, 0, 0))
+#define NO_GLOBAL_ID_COLOR (cv::Scalar(255, 0, 0))
+#define GLOBAL_ID_COLOR (cv::Scalar(0, 255, 0))
 #define DEFAULT_DETECTION_COLOR (cv::Scalar(255, 255, 255))
 #define DEFAULT_TILE_COLOR (2)
 #define NULL_COLOR_ID ((size_t)NULL_CLASS_ID)
@@ -47,17 +48,6 @@ static const std::vector<cv::Scalar> color_table = {
     cv::Scalar(255, 0, 255), cv::Scalar(255, 170, 0), cv::Scalar(255, 0, 170), cv::Scalar(0, 255, 170), cv::Scalar(170, 255, 0),
     cv::Scalar(170, 0, 255), cv::Scalar(0, 170, 255), cv::Scalar(255, 85, 0), cv::Scalar(85, 255, 0), cv::Scalar(0, 255, 85),
     cv::Scalar(0, 85, 255), cv::Scalar(85, 0, 255), cv::Scalar(255, 0, 85), cv::Scalar(255, 255, 255)};
-
-cv::Scalar RGB_TO_YUY2(cv::Scalar rgb)
-{
-    uint r = rgb[0];
-    uint g = rgb[1];
-    uint b = rgb[2];
-    uint y = RGB2Y(r, g, b);
-    uint u = RGB2U(r, g, b);
-    uint v = RGB2V(r, g, b);
-    return cv::Scalar(y, u, y, v);
-}
 
 static cv::Scalar get_color(size_t color_id)
 {
@@ -107,8 +97,9 @@ static std::string get_classification_text(HailoClassificationPtr result, bool s
     return text;
 }
 
-static overlay_status_t draw_landmarks(cv::Mat &image_planes, HailoLandmarksPtr landmarks, HailoROIPtr roi)
+static overlay_status_t draw_landmarks(HailoMat &hmat, HailoLandmarksPtr landmarks, HailoROIPtr roi, float landmark_point_radius)
 {
+    cv::Mat &image_planes = hmat.get_mat();
     HailoBBox bbox = roi->get_bbox();
     int thickness;
     std::vector<std::pair<int, int>> pairs = landmarks->get_pairs();
@@ -133,7 +124,7 @@ static overlay_status_t draw_landmarks(cv::Mat &image_planes, HailoLandmarksPtr 
             cv::Point joint2 = cv::Point(x2, y2);
 
             thickness = (bbox.width() < 0.05) ? 1 : 2;
-            cv::line(image_planes, joint1, joint2, get_color(4), thickness, cv::LINE_4);
+            hmat.draw_line(joint1, joint2, get_color(4), thickness, cv::LINE_4);
         }
     }
     for (auto &point : points)
@@ -144,8 +135,7 @@ static overlay_status_t draw_landmarks(cv::Mat &image_planes, HailoLandmarksPtr 
             uint y = ((point.y() * bbox.height()) + bbox.ymin()) * image_planes.rows;
             // Draw the keypoint (multiply x,y values by the sizes of the frame)
             auto center = cv::Point(x, y);
-            cv::ellipse(image_planes, center, {R, R}, 0, 0, 360,
-                        get_color(7), 3);
+            hmat.draw_ellipse(center, {R, R}, 0, 0, 360, get_color(7), landmark_point_radius);
         }
     }
     return OVERLAY_STATUS_OK;
@@ -259,7 +249,7 @@ void calc_destination_roi_and_resize_mask(cv::Mat &destinationROI, cv::Mat &imag
  * @param roi region of interest
  * @return overlay_status_t
  */
-static overlay_status_t draw_depth_mask(cv::Mat &image_planes, HailoDepthMaskPtr mask, HailoROIPtr roi)
+static overlay_status_t draw_depth_mask(cv::Mat &image_planes, HailoDepthMaskPtr mask, HailoROIPtr roi, const uint mask_overlay_n_threads)
 {
     cv::Mat resized_mask_data;
     cv::Mat destinationROI;
@@ -282,6 +272,9 @@ static overlay_status_t draw_depth_mask(cv::Mat &image_planes, HailoDepthMaskPtr
 
     resized_mask_data = (resized_mask_data - min) / (max - min);
 
+    if (mask_overlay_n_threads > 0)
+        cv::setNumThreads(mask_overlay_n_threads);
+
     // perform efficient parallel matrix iteration and color every pixel its class color
     cv::parallel_for_(cv::Range(0, destinationROI.rows * destinationROI.cols), ParallelPixelDepthMask(destinationROI.data, resized_mask_data.data, mask->get_transparency(), image_planes.cols, destinationROI.cols));
 
@@ -298,11 +291,14 @@ static overlay_status_t draw_depth_mask(cv::Mat &image_planes, HailoDepthMaskPtr
  * @return overlay_status_t OVERLAY_STATUS_OK
  */
 static overlay_status_t
-draw_class_mask(cv::Mat &image_planes, HailoClassMaskPtr mask, HailoROIPtr roi)
+draw_class_mask(cv::Mat &image_planes, HailoClassMaskPtr mask, HailoROIPtr roi, const uint mask_overlay_n_threads)
 {
     cv::Mat resized_mask_data;
     cv::Mat destinationROI;
     calc_destination_roi_and_resize_mask(destinationROI, image_planes, roi, mask, resized_mask_data, mask->get_data(), CV_8UC1);
+
+    if (mask_overlay_n_threads > 0)
+        cv::setNumThreads(mask_overlay_n_threads);
 
     // perform efficient parallel matrix iteration and color every pixel its class color
     cv::parallel_for_(cv::Range(0, destinationROI.rows * destinationROI.cols), ParallelPixelClassMask(destinationROI.data, resized_mask_data.data, mask->get_transparency(), image_planes.cols, destinationROI.cols));
@@ -319,20 +315,24 @@ draw_class_mask(cv::Mat &image_planes, HailoClassMaskPtr mask, HailoROIPtr roi)
  * @param roi the region of interest
  * @return overlay_status_t OVERLAY_STATUS_OK
  */
-static overlay_status_t draw_conf_class_mask(cv::Mat &image_planes, HailoConfClassMaskPtr mask, HailoROIPtr roi)
+static overlay_status_t draw_conf_class_mask(cv::Mat &image_planes, HailoConfClassMaskPtr mask, HailoROIPtr roi, const uint mask_overlay_n_threads)
 {
     cv::Mat resized_mask_data;
     cv::Mat destinationROI;
     calc_destination_roi_and_resize_mask(destinationROI, image_planes, roi, mask, resized_mask_data, mask->get_data(), CV_32F);
 
     cv::Scalar mask_color = indexToColor(mask->get_class_id());
+
+    if (mask_overlay_n_threads > 0)
+        cv::setNumThreads(mask_overlay_n_threads);
+
     // perform efficient parallel matrix iteration and color every pixel its class color
     cv::parallel_for_(cv::Range(0, destinationROI.rows * destinationROI.cols), ParallelPixelClassConfMask(destinationROI.data, resized_mask_data.data, mask->get_transparency(), image_planes.cols, destinationROI.cols, mask_color));
 
     return OVERLAY_STATUS_OK;
 }
 
-overlay_status_t draw_all(HailoMat &hmat, HailoROIPtr roi, bool show_confidence)
+overlay_status_t draw_all(HailoMat &hmat, HailoROIPtr roi, float landmark_point_radius, bool show_confidence, bool local_gallery, const uint mask_overlay_n_threads)
 {
     overlay_status_t ret = OVERLAY_STATUS_UNINITIALIZED;
     uint number_of_classifications = 0;
@@ -345,19 +345,33 @@ overlay_status_t draw_all(HailoMat &hmat, HailoROIPtr roi, bool show_confidence)
         {
             HailoDetectionPtr detection = std::dynamic_pointer_cast<HailoDetection>(obj);
 
+            cv::Scalar color = NO_GLOBAL_ID_COLOR;
+            std::string text = "";
+            if (local_gallery)
+            {
+                auto global_ids = hailo_common::get_hailo_global_id(detection);
+                if (global_ids.size() > 1)
+                    std::cerr << "ERROR: more than one global id in roi" << std::endl;
+                if (global_ids.size() == 1)
+                    color = GLOBAL_ID_COLOR;
+            }
+            else
+            {
+                color = get_color((size_t)detection->get_class_id());
+                text = get_detection_text(detection, show_confidence);
+            }
+
             // Draw Rectangle
             auto rect = get_rect(hmat, detection, roi);
-            const cv::Scalar color = get_color((size_t)detection->get_class_id());
             hmat.draw_rectangle(rect, color);
 
             // Draw text
-            std::string text = get_detection_text(detection, show_confidence);
             auto text_position = cv::Point(rect.x - log(rect.width), rect.y - log(rect.width));
             float font_scale = TEXT_FONT_FACTOR * log(rect.width);
             hmat.draw_text(text, text_position, font_scale, color);
 
             // Draw inner objects.
-            ret = draw_all(hmat, detection, show_confidence);
+            ret = draw_all(hmat, detection, landmark_point_radius, show_confidence, local_gallery, mask_overlay_n_threads);
             break;
         }
         case HAILO_CLASSIFICATION:
@@ -371,38 +385,39 @@ overlay_status_t draw_all(HailoMat &hmat, HailoROIPtr roi, bool show_confidence)
         case HAILO_LANDMARKS:
         {
             HailoLandmarksPtr landmarks = std::dynamic_pointer_cast<HailoLandmarks>(obj);
-            draw_landmarks(mat, landmarks, roi);
+            draw_landmarks(hmat, landmarks, roi, landmark_point_radius);
             break;
         }
         case HAILO_TILE:
         {
             HailoTileROIPtr tile = std::dynamic_pointer_cast<HailoTileROI>(obj);
             draw_tile(hmat, tile);
-            draw_all(hmat, tile, show_confidence);
+            draw_all(hmat, tile, landmark_point_radius, show_confidence, local_gallery, mask_overlay_n_threads);
             break;
         }
         case HAILO_UNIQUE_ID:
         {
             HailoUniqueIDPtr id = std::dynamic_pointer_cast<HailoUniqueID>(obj);
-            draw_id(hmat, id, roi);
+            if ((local_gallery && id->get_mode() == GLOBAL_ID) || (!local_gallery && id->get_mode() == TRACKING_ID))
+                draw_id(hmat, id, roi);
             break;
         }
         case HAILO_DEPTH_MASK:
         {
             HailoDepthMaskPtr mask = std::dynamic_pointer_cast<HailoDepthMask>(obj);
-            draw_depth_mask(mat, mask, roi);
+            draw_depth_mask(mat, mask, roi, mask_overlay_n_threads);
             break;
         }
         case HAILO_CLASS_MASK:
         {
             HailoClassMaskPtr mask = std::dynamic_pointer_cast<HailoClassMask>(obj);
-            draw_class_mask(mat, mask, roi);
+            draw_class_mask(mat, mask, roi, mask_overlay_n_threads);
             break;
         }
         case HAILO_CONF_CLASS_MASK:
         {
             HailoConfClassMaskPtr mask = std::dynamic_pointer_cast<HailoConfClassMask>(obj);
-            draw_conf_class_mask(mat, mask, roi);
+            draw_conf_class_mask(mat, mask, roi, mask_overlay_n_threads);
             break;
         }
         default:
@@ -429,8 +444,10 @@ void face_blur(cv::Mat &mat, HailoROIPtr roi)
             auto ymax = std::clamp<int>(((detection_bbox.ymax() * roi_bbox.height()) + roi_bbox.ymin()) * mat.rows, 0, mat.rows);
             auto rect = cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax));
             cv::Mat face = mat(rect);
-            cv::blur(face, face, cv::Size(7, 7));
-            roi->remove_object(detection);
+            cv::blur(face, face, cv::Size(13, 13));
+
+            // Remove landmarks from the ROI before overlaying the blurred face
+            roi->remove_objects_typed(HAILO_LANDMARKS);
         }
         else
         {

@@ -5,6 +5,7 @@
 #include "lpr_croppers.hpp"
 #include <iostream>
 
+#define VEHICLE_LABEL "car"
 #define LICENSE_PLATE_LABEL "license_plate"
 #define OCR_LABEL "ocr"
 
@@ -121,23 +122,29 @@ std::vector<HailoROIPtr> license_plate_quality_estimation(cv::Mat image, HailoRO
     std::vector<HailoROIPtr> crop_rois;
     float variance;
     // Get all detections.
-    std::vector<HailoDetectionPtr> detections_ptrs = hailo_common::get_hailo_detections(roi);
-    for (HailoDetectionPtr &detection : detections_ptrs)
+    std::vector<HailoDetectionPtr> vehicle_ptrs = hailo_common::get_hailo_detections(roi);
+    for (HailoDetectionPtr &vehicle : vehicle_ptrs)
     {
-        // For each detection, check the inner detections
-        std::vector<HailoDetectionPtr> inner_detection_ptrs = hailo_common::get_hailo_detections(detection);
-        for (HailoDetectionPtr &inner_detection : inner_detection_ptrs)
-        {
-            if (LICENSE_PLATE_LABEL != inner_detection->get_label())
+        if (VEHICLE_LABEL != vehicle->get_label())
                 continue;
-            HailoBBox license_plate_box = hailo_common::create_flattened_bbox(inner_detection->get_bbox(), inner_detection->get_scaling_bbox());
+        // For each detection, check the inner detections
+        std::vector<HailoDetectionPtr> license_plate_ptrs = hailo_common::get_hailo_detections(vehicle);
+        for (HailoDetectionPtr &license_plate : license_plate_ptrs)
+        {
+            if (LICENSE_PLATE_LABEL != license_plate->get_label())
+                continue;
+            HailoBBox license_plate_box = hailo_common::create_flattened_bbox(license_plate->get_bbox(), license_plate->get_scaling_bbox());
 
             // Get the variance of the image, only add ROIs that are above threshold.
             variance = quality_estimation(image, license_plate_box, CROP_RATIO);
 
             if (variance >= QUALITY_THRESHOLD)
             {
-                crop_rois.emplace_back(inner_detection);
+                crop_rois.emplace_back(license_plate);
+            }
+            else
+            {
+                vehicle->remove_object(license_plate); // If it is not a good license plate, then remove it!
             }
         }
     }

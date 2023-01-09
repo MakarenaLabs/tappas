@@ -11,14 +11,6 @@
 
 G_BEGIN_DECLS
 
-typedef enum {
-    GST_HAILO_CROPPER_NEAREST_NEIGHBOR,
-    GST_HAILO_CROPPER_BILINEAR,
-    GST_HAILO_CROPPER_BICUBIC,
-    GST_HAILO_CROPPER_INTER_AREA,
-    GST_HAILO_CROPPER_LETTERBOX,
-} GstHailoCropperResizeMethod;
-
 #define GST_TYPE_HAILO_CROPPER (gst_hailocropper_get_type())
 #define GST_HAILO_CROPPER(obj) (G_TYPE_CHECK_INSTANCE_CAST((obj), GST_TYPE_HAILO_CROPPER, GstHailoCropper))
 #define GST_HAILO_CROPPER_CLASS(klass) (G_TYPE_CHECK_CLASS_CAST((klass), GST_TYPE_HAILO_CROPPER, GstHailoCropperClass))
@@ -36,7 +28,8 @@ struct _GstHailoCropper
     GstHailoBaseCropper element;
     gchar *lib_path;
     gchar *function_name;
-    GstHailoCropperResizeMethod method;
+    gboolean use_letterbox;
+    cv::InterpolationFlags method;
     void *loaded_lib;
     std::vector<HailoROIPtr> (*handler)(cv::Mat, HailoROIPtr);
 };

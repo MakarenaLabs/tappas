@@ -86,6 +86,19 @@ namespace decode_json
                                                                 object_json["confidence"].GetFloat()));
     }
 
+    inline void decode_matrix(rapidjson::Value& object_json, HailoROIPtr roi)
+    {
+        std::vector<float> matrix_data;
+        for (rapidjson::Value& entry : object_json["data"].GetArray()) {
+            matrix_data.emplace_back(entry.GetFloat());
+        }
+        // Add this matrix object to the parent
+        roi->add_object(std::make_shared<HailoMatrix>(matrix_data,
+                                                      object_json["height"].GetInt(),
+                                                      object_json["width"].GetInt(),
+                                                      object_json["features"].GetInt()));
+    }
+
     inline void decode_landmarks(rapidjson::Value& object_json, HailoROIPtr roi)
     {
         // Decode points
@@ -161,6 +174,11 @@ namespace decode_json
                         decode_tile(entry["HailoTileROI"], roi);
                         break;
                     }
+                    case HAILO_MATRIX:
+                    {
+                        decode_matrix(entry["HailoMatrix"], roi);
+                        break;
+                    }
                     case HAILO_UNIQUE_ID:
                     {
                         decode_unique_id(entry["HailoUniqueID"], roi);
@@ -180,6 +198,21 @@ namespace decode_json
         assert(document.HasMember("HailoROI"));
         assert(document["HailoROI"].HasMember("SubObjects"));
         decode_hailo_objects_from_json(document["HailoROI"]["SubObjects"], roi);
+    }
+
+    inline void decode_hailo_face_recognition_result(rapidjson::Value object_json, HailoROIPtr roi, std::vector<std::string> &embedding_names)
+    {
+        assert(object_json.IsArray());
+        for (rapidjson::Value& entry : object_json.GetArray()) 
+        {
+            if (entry.HasMember("FaceRecognition"))
+            {
+                assert(entry["FaceRecognition"].HasMember("Embeddings"));
+                embedding_names.emplace_back(entry["FaceRecognition"]["Name"].GetString());
+                for (rapidjson::Value& embedding_entry : entry["FaceRecognition"]["Embeddings"].GetArray())
+                    decode_matrix(embedding_entry["HailoMatrix"], roi);
+            }
+        }
     }
 
 }

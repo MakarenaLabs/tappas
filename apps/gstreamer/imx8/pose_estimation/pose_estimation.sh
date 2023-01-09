@@ -79,7 +79,7 @@ PIPELINE="gst-launch-1.0 \
     glcolorscale ! queue ! \
     gldownload ! video/x-raw,pixel-aspect-ratio=1/1,format=RGBA ! queue ! \
     videoconvert name=pre_hailonet_videoconvert n-threads=2 qos=false ! queue ! \
-    hailonet hef-path=$hef_path vdevice-key=$DEFAULT_VDEVICE_KEY debug=False is-active=true batch-size=1 ! \
+    hailonet hef-path=$hef_path vdevice-key=$DEFAULT_VDEVICE_KEY debug=False batch-size=1 ! \
     queue ! \
     hailofilter so-path=$postprocess_so qos=false function-name=$network_name ! \
     queue ! hailooverlay qos=false ! queue ! \

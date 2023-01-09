@@ -1,7 +1,7 @@
 import platform
 from pathlib import Path
 
-VERSION = "v3.22"
+VERSION = "v3.23"
 MODEL_ZOO_VERSION = "v2.4"
 
 CONFIG_PATH = Path(__file__).parent
@@ -16,6 +16,7 @@ REQUIREMENTS_FILES = ["general/cascading_networks.json",
                       "general/depth_estimation.json",
                       "general/detection.json",
                       "general/face_detection.json",
+                      "general/face_recognition.json",
                       "general/facial_landmarks.json",
                       "general/instance_segmentation.json",
                       "general/license_plate_recognition.json",
@@ -29,6 +30,10 @@ REQUIREMENTS_FILES = ["general/cascading_networks.json",
                       "general/re_id.json",
                       "general/segmentation.json",
                       "general/tiling.json",
+                      "x86/x86_sanity.json",
+                      "x86/x86_vms.json",
+                      "x86/x86_multistream_detection.json",
+                      "x86/x86_century.json",
                       "rpi/rpi_cascading_networks.json",
                       "rpi/rpi_classification.json",
                       "rpi/rpi_depth_estimation.json",

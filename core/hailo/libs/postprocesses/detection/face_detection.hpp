@@ -1,12 +1,11 @@
 /**
- * Copyright (c) 2021-2022 Hailo Technologies Ltd. All rights reserved.
- * Distributed under the LGPL license (https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt)
- **/
-#ifndef _HAILO_FACE_DETECTION_POST_HPP_
-#define _HAILO_FACE_DETECTION_POST_HPP_
+* Copyright (c) 2021-2022 Hailo Technologies Ltd. All rights reserved.
+* Distributed under the LGPL license (https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt)
+**/
+#pragma once
 #include "hailo_objects.hpp"
 #include "hailo_common.hpp"
-
+#include "xtensor/xarray.hpp"
 
 class FaceDetectionParams
 {
@@ -37,6 +36,7 @@ public:
 };
 
 __BEGIN_DECLS
+void scrfd(HailoROIPtr roi, void *params_void_ptr);
 void retinaface(HailoROIPtr roi, void *params_void_ptr);
 void lightface(HailoROIPtr roi, void *params_void_ptr);
 void filter(HailoROIPtr roi, void *params_void_ptr);
@@ -46,6 +46,9 @@ xt::xarray<float> get_anchors(const std::vector<std::vector<int>> &anchor_min_si
                               const xt::xarray<int> &anchor_steps,
                               const int width,
                               const int height);
+xt::xarray<float> get_anchors_scrfd(const std::vector<std::vector<int>> &anchor_min_sizes,
+                              const xt::xarray<int> &anchor_steps,
+                              const int width,
+                              const int height);
 
 __END_DECLS
-#endif

@@ -135,7 +135,6 @@ void gst_hailofilter_get_property(GObject *object, guint property_id,
         g_value_set_string(value, hailofilter->lib_path);
         break;
     case PROP_PROCESS_FUNC_NAME:
-
         g_value_set_string(value, hailofilter->function_name);
         break;
     case PROP_USE_GST_BUFFER:

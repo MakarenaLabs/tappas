@@ -5,12 +5,13 @@ CURRENT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 
 function init_variables() {
     readonly RESOURCES_DIR="${CURRENT_DIR}/resources"
+    readonly CONFIGS_DIR="${RESOURCES_DIR}/configs"
     readonly POSTPROCESS_DIR="/usr/lib/hailo-post-processes"
-    readonly DEFAULT_POSTPROCESS_SO="$POSTPROCESS_DIR/libmobilenet_ssd_post.so"
-    readonly DEFAULT_NETWORK_NAME="mobilenet_ssd"
-    readonly DEFAULT_VIDEO_SOURCE="/dev/video0"
-    readonly DEFAULT_HEF_PATH="${RESOURCES_DIR}/ssd_mobilenet_v1.hef"
-    readonly DEFAULT_JSON_CONFIG_PATH="null" 
+    readonly DEFAULT_POSTPROCESS_SO="$POSTPROCESS_DIR/libyolo_post.so"
+    readonly DEFAULT_NETWORK_NAME="yolov5"
+    readonly DEFAULT_VIDEO_SOURCE="${RESOURCES_DIR}/detection0.mp4"
+    readonly DEFAULT_HEF_PATH="${RESOURCES_DIR}/yolov5s_personface_rgba.hef"
+    readonly DEFAULT_JSON_CONFIG_PATH="${CONFIGS_DIR}/yolov5_personface.json"
 
     postprocess_so=$DEFAULT_POSTPROCESS_SO
     network_name=$DEFAULT_NETWORK_NAME
@@ -26,10 +27,10 @@ function print_usage() {
     echo "IMX6 Detection pipeline usage:"
     echo ""
     echo "Options:"
-    echo "  --help              Show this help"
+    echo "  --help                          Show this help"
     echo "  -i INPUT --input INPUT          Set the video source (default $input_source)"
-    echo "  --show-fps          Print fps"
-    echo "  --print-gst-launch  Print the ready gst-launch command without running it"
+    echo "  --show-fps                      Print fps"
+    echo "  --print-gst-launch              Print the ready gst-launch command without running it"
     exit 0
 }
 
@@ -60,32 +61,30 @@ init_variables $@
 
 parse_args $@
 
-opengl_convert="glupload ! \
-                queue max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
-                glcolorconvert qos=false ! \
-                queue max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
-                glcolorscale qos=false ! \
-                queue max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
-                gldownload ! \
-                video/x-raw,pixel-aspect-ratio=1/1,format=RGBA ! \
-                queue max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
-                videoconvert name=pre_hailonet_videoconvert n-threads=2 qos=false ! \
-                video/x-raw, format=RGB, width=300, height=300"
+# If the video provided is from a camera
+if [[ $input_source =~ "/dev/video" ]]; then
+    source_element="imxv4l2videosrc device=$input_source name=src_0 ! "
+else
+    source_element="filesrc location=$input_source name=src_0 ! \
+                    qtdemux ! \
+                    queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
+                    h264parse ! imxvpudec ! "
+fi
 
 PIPELINE="gst-launch-1.0 \
-          v4l2src device=$input_source ! video/x-raw,format=YUY2,width=640,height=480,framerate=30/1 ! \
-          queue leaky=downstream max-size-buffers=5 max-size-bytes=0 max-size-time=0 ! \
-          $opengl_convert ! \
+          $source_element \
           queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
-          hailonet hef-path=$hef_path batch-size=1 ! \
+          imxg2dvideotransform ! video/x-raw, format=RGBA ! \
           queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
-          hailofilter function-name=$network_name so-path=$postprocess_so config-path=$json_config_path qos=false ! \
+          hailonet hef-path=$hef_path ! \
+          queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
+          hailofilter function-name=$network_name config-path=$json_config_path so-path=$postprocess_so qos=false ! \
           queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
           hailooverlay qos=false ! \
           queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
-          videoconvert qos=false ! \
-          queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
-          fpsdisplaysink video-sink=autovideosink name=hailo_display sync=false text-overlay=false ${additonal_parameters}"
+          fpsdisplaysink video-sink=imxipuvideosink name=hailo_display sync=false text-overlay=false ${additonal_parameters}"
+
+
 
 echo "Running $network_name"
 echo ${PIPELINE}

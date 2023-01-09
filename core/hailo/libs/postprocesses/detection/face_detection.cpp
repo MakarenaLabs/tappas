@@ -4,7 +4,6 @@
  **/
 #include <algorithm>
 #include <cmath>
-#include <iostream>
 #include <iterator>
 #include <string>
 #include <tuple>
@@ -44,6 +43,26 @@
 #define LIGHTFACE_HEIGHT (240)
 #define RETINAFACE_WIDTH (1280)
 #define RETINAFACE_HEIGHT (736)
+#define SCRFD_WIDTH (640)
+#define SCRFD_HEIGHT (640)
+
+// Supported Networks
+enum network_type
+{
+    LIGHTFACE,
+    RETINAFACE,
+    SCRFD,
+};
+inline const char* ToString(network_type v)
+{
+    switch (v)
+    {
+        case LIGHTFACE:   return "lightface";
+        case RETINAFACE:  return "retinaface";
+        case SCRFD:       return "scrfd";
+        default:          return "[unknown]";
+    }
+}
 
 #if __GNUC__ > 8
 #include <filesystem>
@@ -81,6 +100,17 @@ FaceDetectionParams *init(const std::string config_path, const std::string funct
         {
             image_width = RETINAFACE_WIDTH;
             image_height = RETINAFACE_HEIGHT;
+            anchor_variance = {0.1, 0.2};
+            anchor_steps = {8, 16, 32};
+            anchor_min_size = {{16, 32}, {64, 128}, {256, 512}};
+            num_branches = anchor_min_size.size();
+            score_threshold = 0.4;
+            iou_threshold = 0.4;
+        }
+        else if (function_name.std::string::compare("scrfd") == 0)
+        {
+            image_width = SCRFD_WIDTH;
+            image_height = SCRFD_HEIGHT;
             anchor_variance = {0.1, 0.2};
             anchor_steps = {8, 16, 32};
             anchor_min_size = {{16, 32}, {64, 128}, {256, 512}};
@@ -198,7 +228,11 @@ FaceDetectionParams *init(const std::string config_path, const std::string funct
     }
 
     // Calculate the anchors based on the image size, step size, and feature map.
-    const xt::xarray<float> anchors = get_anchors(anchor_min_size, anchor_steps, image_width, image_height);
+    xt::xarray<float> anchors;
+    if (function_name.std::string::compare("scrfd") == 0)
+        anchors = get_anchors_scrfd(anchor_min_size, anchor_steps, image_width, image_height);
+    else
+        anchors = get_anchors(anchor_min_size, anchor_steps, image_width, image_height);
     // Using the anchors, create a multiplier that will be used against the tensor results.
     const xt::xarray<float> anchors_multiplier = anchor_variance(0) * xt::view(anchors, xt::all(), xt::range(2, _));
     FaceDetectionParams *params = new FaceDetectionParams(anchors, anchors_multiplier, anchor_variance, anchor_min_size, score_threshold, iou_threshold, num_branches);
@@ -219,7 +253,6 @@ xt::xarray<float> get_anchors(const std::vector<std::vector<int>> &anchor_min_si
                               const int width,
                               const int height)
 {
-
     // Here we need to calculate the anchors of the image so we can extract faces later.
     // We start by calculating the feature map sizes based on the anchor steps.
     xt::xarray<int> feature_maps_height = xt::ceil(height / xt::cast<float>(anchor_steps));
@@ -230,9 +263,7 @@ xt::xarray<float> get_anchors(const std::vector<std::vector<int>> &anchor_min_si
     int num_anchors = 0;
     xt::xarray<int> feature_area = feature_maps_height * feature_maps_width;
     for (uint index = 0; index < anchor_min_sizes.size(); index++)
-    {
         num_anchors += feature_area(index) * anchor_min_sizes[index].size();
-    }
     // Now initialize the anchors to the given size. This way we can fill them in-place
     // instead of concatenating, saving lots of time.
     xt::xarray<float> anchors = xt::zeros<float>({num_anchors, 4});
@@ -260,9 +291,66 @@ xt::xarray<float> get_anchors(const std::vector<std::vector<int>> &anchor_min_si
     return anchors;
 }
 
+xt::xarray<float> get_anchors_scrfd(const std::vector<std::vector<int>> &anchor_min_sizes,
+                                    const xt::xarray<int> &anchor_steps,
+                                    const int image_width,
+                                    const int image_height)
+{
+    int total_anchors, num_anchors, width, height;
+    total_anchors = num_anchors = width = height = 0;
+
+    // Initialize the anchors to the given size. This way we can fill them in-place
+    // instead of concatenating, saving lots of time. 
+    for (uint index = 0; index < anchor_min_sizes.size(); index++)
+    {
+        width = image_width / anchor_steps[index];
+        height = image_height / anchor_steps[index];
+        num_anchors = anchor_min_sizes[index].size();
+        total_anchors += width * height * num_anchors;
+    }
+    xt::xarray<float> anchors = xt::zeros<float>({total_anchors, 4});
+
+    int anchor_range = 0;
+    for (uint index = 0; index < anchor_min_sizes.size(); index++)
+    {
+        // First build a meshgrid of centers (x,y) for the anchors
+        int width = image_width / anchor_steps[index];
+        int height = image_height / anchor_steps[index];
+        num_anchors = anchor_min_sizes[index].size();
+        xt::xarray<float> anchor_centers_stack = xt::transpose(xt::stack(xt::meshgrid(xt::arange(0, width), xt::arange(0, height)))) * anchor_steps[index];
+        auto anchor_centers_paired = xt::reshape_view(anchor_centers_stack, {width * height, 2});
+
+        // Normalize the centers to the size of the anchor branch
+        xt::col(anchor_centers_paired, 0) = xt::col(anchor_centers_paired, 0) / image_height;
+        xt::col(anchor_centers_paired, 1) = xt::col(anchor_centers_paired, 1) / image_width;
+        auto anchor_centers = xt::repeat(anchor_centers_paired, num_anchors, 0);
+
+        // Create sclaes to match the anchor centers
+        xt::xarray<float> anchor_scales = xt::ones_like(anchor_centers) * anchor_steps[index];
+        xt::col(anchor_scales, 0) = xt::col(anchor_scales, 0) / image_height;
+        xt::col(anchor_scales, 1) = xt::col(anchor_scales, 1) / image_width;
+
+        // Concat and fill the anchors in place
+        auto anchor_layer = xt::concatenate(xt::xtuple(anchor_centers, anchor_scales), 1);
+        xt::view(anchors, xt::range(anchor_range, anchor_range + anchor_centers.shape(0)), xt::all()) = anchor_layer;
+        anchor_range += width * height * num_anchors;
+    }
+    return anchors;
+}
+
 //******************************************************************
 // BOX/LANDMARK DECODING
 //******************************************************************
+xt::xarray<float> decode_landmarks_scrfd(const xt::xarray<float> &landmark_detections,
+                                        const xt::xarray<float> &anchors)
+{
+    // Decode the boxes relative to their anchors.
+    // There are 5 landmarks paired in sets of 2 (x and y values),
+    // so we need to tile our anchors by 5
+    xt::xarray<float> landmarks = xt::tile(xt::view(anchors, xt::all(), xt::range(0, 2)), {1, 5}) + landmark_detections * xt::tile(xt::view(anchors, xt::all(), xt::range(2, 4)), {1, 5});
+    return landmarks;
+}
+
 xt::xarray<float> decode_landmarks(const xt::xarray<float> &landmark_detections,
                                    const xt::xarray<float> &anchors,
                                    const xt::xarray<float> &anchors_multiplier)
@@ -272,6 +360,19 @@ xt::xarray<float> decode_landmarks(const xt::xarray<float> &landmark_detections,
     // so we need to tile our anchors by 5
     xt::xarray<float> landmarks = xt::tile(xt::view(anchors, xt::all(), xt::range(0, 2)), {1, 5}) + landmark_detections * xt::tile(anchors_multiplier, {1, 5});
     return landmarks;
+}
+
+xt::xarray<float> decode_boxes_scrfd(const xt::xarray<float> &box_detections,
+                                     const xt::xarray<float> &anchors)
+{
+    // Initalize the boxes matrix at the expected size
+    xt::xarray<float> boxes = xt::zeros<float>(box_detections.shape());
+    // Decode the boxes relative to their anchors in place
+    xt::col(boxes, 0) = xt::col(anchors, 0) - (xt::col(box_detections, 0) * xt::col(anchors, 2));
+    xt::col(boxes, 1) = xt::col(anchors, 1) - (xt::col(box_detections, 1) * xt::col(anchors, 3));
+    xt::col(boxes, 2) = xt::col(anchors, 0) + (xt::col(box_detections, 2) * xt::col(anchors, 2));
+    xt::col(boxes, 3) = xt::col(anchors, 1) + (xt::col(box_detections, 3) * xt::col(anchors, 3));
+    return boxes;
 }
 
 xt::xarray<float> decode_boxes(const xt::xarray<float> &box_detections,
@@ -298,11 +399,15 @@ std::tuple<xt::xarray<float>, xt::xarray<float>, xt::xarray<float>> detect_boxes
                                                                                                const xt::xarray<float> &anchors,
                                                                                                const xt::xarray<float> &anchors_multiplier,
                                                                                                const xt::xarray<float> &anchor_variance,
-                                                                                               const float score_threshold)
+                                                                                               const float score_threshold,
+                                                                                               const network_type network)
 {
-    xt::xarray<float> landmarks;
+    xt::xarray<float> boxes, landmarks;
     // Decode the boxes and get the face scores (we don't care about unlabeled scores)
-    xt::xarray<float> boxes = decode_boxes(xt::squeeze(box_outputs), anchors, anchors_multiplier, anchor_variance);
+    if (network == SCRFD)
+        boxes = decode_boxes_scrfd(xt::squeeze(box_outputs), anchors);
+    else
+        boxes = decode_boxes(xt::squeeze(box_outputs), anchors, anchors_multiplier, anchor_variance);
     xt::xarray<float> scores = xt::col(xt::squeeze(class_scores), 1);
 
     // Filter out low scores
@@ -317,7 +422,10 @@ std::tuple<xt::xarray<float>, xt::xarray<float>, xt::xarray<float>> detect_boxes
         auto cropped_landmarks = xt::view(xt::squeeze(landmark_ouputs), xt::keep(higher_scores[0]), xt::all());
         auto cropped_anchors = xt::view(anchors, xt::keep(higher_scores[0]), xt::all());
         auto cropped_anchors_mul = xt::view(anchors_multiplier, xt::keep(higher_scores[0]), xt::all());
-        landmarks = decode_landmarks(cropped_landmarks, cropped_anchors, cropped_anchors_mul);
+        if (network == SCRFD)
+            landmarks = decode_landmarks_scrfd(cropped_landmarks, cropped_anchors);
+        else
+            landmarks = decode_landmarks(cropped_landmarks, cropped_anchors, cropped_anchors_mul);
     }
 
     return std::tuple<xt::xarray<float>, xt::xarray<float>, xt::xarray<float>>(std::move(boxes), std::move(scores), std::move(landmarks));
@@ -329,7 +437,8 @@ std::tuple<xt::xarray<float>, xt::xarray<float>, xt::xarray<float>> detect_boxes
 void encode_detections(std::vector<HailoDetection> &objects,
                        xt::xarray<float> &detection_boxes,
                        xt::xarray<float> &scores,
-                       xt::xarray<float> &landmarks)
+                       xt::xarray<float> &landmarks,
+                       network_type network)
 {
     // Here we will package the processed detections into the HailoDetection meta
     // The detection meta will hold the following items:
@@ -356,7 +465,7 @@ void encode_detections(std::vector<HailoDetection> &objects,
             // The keypoints are flatten, reshape them to 2 * num_keypoints.
             int num_keypoints = keypoints_raw.shape(0) / 2;
             auto face_keypoints = xt::reshape_view(keypoints_raw, {num_keypoints, 2});
-            hailo_common::add_landmarks_to_detection(detected_face, "retinaface", face_keypoints);
+            hailo_common::add_landmarks_to_detection(detected_face, ToString(network), face_keypoints);
         }
 
         objects.push_back(detected_face); // Push the detection to the objects vector
@@ -369,7 +478,10 @@ std::vector<HailoDetection> face_detection_postprocess(std::vector<HailoTensorPt
                                                        const xt::xarray<float> &anchor_variance,
                                                        const float score_threshold,
                                                        const float iou_threshold,
-                                                       const int num_branches)
+                                                       const int num_branches,
+                                                       const int total_classes,
+                                                       const bool requires_softmax,
+                                                       const network_type network)
 {
     std::vector<HailoDetection> objects; // The detection meta we will eventually return
 
@@ -404,8 +516,8 @@ std::vector<HailoDetection> face_detection_postprocess(std::vector<HailoTensorPt
         }
         else if (i % outputs_per_branch == 1)
         {
-            auto num_classes = (int)xdata_rescaled.shape(0) * (int)xdata_rescaled.shape(1) * ((int)xdata_rescaled.shape(2) / 2);
-            auto xdata_reshaped = xt::reshape_view(xdata_rescaled, {1, num_classes, 2}); // Resize to be by the 2 available classes
+            auto num_classes = (int)xdata_rescaled.shape(0) * (int)xdata_rescaled.shape(1) * ((int)xdata_rescaled.shape(2) / total_classes);
+            auto xdata_reshaped = xt::reshape_view(xdata_rescaled, {1, num_classes, total_classes}); // Resize to be by the total_classes available classes
             class_layers.emplace_back(std::move(xdata_reshaped));
             classes_reshaped_size += num_classes;
         }
@@ -448,12 +560,9 @@ std::vector<HailoDetection> face_detection_postprocess(std::vector<HailoTensorPt
     // If there are landmarks, concat those too.
     std::vector<std::size_t> landmarks_shape = {};
     if (landmarks_reshaped_size > 0)
-    {
         landmarks_shape = {1, landmarks_reshaped_size, 10};
-    }
     xt::xarray<float> stacked_landmarks(landmarks_shape);
     index = 0;
-
     if (landmarks_layers.size() > 0)
     {
         for (uint i = 0; i < landmarks_layers.size(); ++i)
@@ -462,33 +571,66 @@ std::vector<HailoDetection> face_detection_postprocess(std::vector<HailoTensorPt
             index += landmarks_layers[i].shape(1);
         }
     }
+
     //-------------------------------
     // CALCULATION AND EXTRACTION
     //-------------------------------
 
     // Run softmax on the scores to get the relevant class
     // xt::xarray<float> class_scores = common::softmax_xtensor(stacked_classes);
-    common::softmax_2D(stacked_classes.data(), stacked_classes.shape(1), stacked_classes.shape(2));
+    if (requires_softmax)
+        common::softmax_2D(stacked_classes.data(), stacked_classes.shape(1), stacked_classes.shape(2));
 
     // Extract boxes and landmarks
     auto boxes_and_landmarks = detect_boxes_and_landmarks(stacked_boxes, stacked_classes, stacked_landmarks,
                                                           anchors, anchors_multiplier, anchor_variance,
-                                                          score_threshold);
+                                                          score_threshold, network);
 
-    //-------------------------------
-    // RESULTS ENCODING
-    //-------------------------------
+    // //-------------------------------
+    // // RESULTS ENCODING
+    // //-------------------------------
 
-    // Encode the individual boxes/keypoints and package them into the meta
+    // // Encode the individual boxes/keypoints and package them into the meta
     encode_detections(objects,
                       std::get<0>(boxes_and_landmarks),
                       std::get<1>(boxes_and_landmarks),
-                      std::get<2>(boxes_and_landmarks));
+                      std::get<2>(boxes_and_landmarks),
+                      network);
 
-    // Perform nms to throw out similar detections
+    // // Perform nms to throw out similar detections
     common::nms(objects, iou_threshold);
 
     return objects;
+}
+
+//******************************************************************
+//  SCRFD POSTPROCESS
+//******************************************************************
+void scrfd(HailoROIPtr roi, void *params_void_ptr)
+{
+    /*
+     *  SCRFD is also a face detection + landmarks network like retinaface below.
+     *  It uses the same tensor scheme but different decoding stratedgy.
+     *  Overall differences lie in performance and resolution.
+     */
+    // Get the output layers from the hailo frame.
+    FaceDetectionParams *params = reinterpret_cast<FaceDetectionParams *>(params_void_ptr);
+    if (!roi->has_tensors())
+        return;
+    std::vector<HailoTensorPtr> tensors = roi->get_tensors();
+
+    // We need to rearrange the order of the output layers to match boxes:classes:landmarks
+    std::rotate(tensors.begin(), tensors.begin() + 1, tensors.begin()+2);
+    std::rotate(tensors.begin() + 3, tensors.begin() + 4, tensors.begin()+5);
+    std::rotate(tensors.begin() + 6, tensors.begin() + 7, tensors.begin()+8);
+
+    // // // Extract the detection objects using the given parameters.
+    std::vector<HailoDetection> detections = face_detection_postprocess(tensors, params->anchors, params->anchors_multiplier, params->anchor_variance,
+                                                                        params->score_threshold, params->iou_threshold, params->num_branches,
+                                                                        1, false, SCRFD);
+
+    // // Update the frame with the found detections.
+    hailo_common::add_detections(roi, detections);
 }
 
 //******************************************************************
@@ -507,18 +649,17 @@ void retinaface(HailoROIPtr roi, void *params_void_ptr)
     // Get the output layers from the hailo frame.
     FaceDetectionParams *params = reinterpret_cast<FaceDetectionParams *>(params_void_ptr);
     if (!roi->has_tensors())
-    {
         return;
-    }
     std::vector<HailoTensorPtr> tensors = roi->get_tensors();
 
-    // No need to Rearrange the order of the output layers to match boxes:classes:landmarks
+    // We need to rearrange the order of the output layers to match boxes:classes:landmarks
     std::rotate(tensors.begin(), tensors.begin() + 6, tensors.end());
     std::rotate(tensors.begin() + 3, tensors.begin() + 6, tensors.end());
 
     // Extract the detection objects using the given parameters.
     std::vector<HailoDetection> detections = face_detection_postprocess(tensors, params->anchors, params->anchors_multiplier, params->anchor_variance,
-                                                                        params->score_threshold, params->iou_threshold, params->num_branches);
+                                                                        params->score_threshold, params->iou_threshold, params->num_branches,
+                                                                        2, true, RETINAFACE);
 
     // Update the frame with the found detections.
     hailo_common::add_detections(roi, detections);
@@ -542,15 +683,14 @@ std::vector<HailoDetection> lightface_post(std::vector<HailoTensorPtr> &tensors,
     // Get the output layers from the hailo frame.
     std::vector<HailoDetection> detections;
     if (tensors.size() == 0)
-    {
         return detections;
-    }
     // Rearrange the order of the output layers to match boxes:classes
     std::reverse(tensors.begin(), tensors.end());
 
     // Extract the detection objects using the given parameters.
     detections = face_detection_postprocess(tensors, params->anchors, params->anchors_multiplier, params->anchor_variance,
-                                            params->score_threshold, params->iou_threshold, params->num_branches);
+                                            params->score_threshold, params->iou_threshold, params->num_branches,
+                                            2, true, LIGHTFACE);
 
     return detections;
 }

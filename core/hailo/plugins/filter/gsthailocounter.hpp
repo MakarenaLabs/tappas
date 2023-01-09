@@ -2,8 +2,7 @@
  * Copyright (c) 2021-2022 Hailo Technologies Ltd. All rights reserved.
  * Distributed under the LGPL license (https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt)
  **/
-#ifndef _GST_HAILO_COUNTER_HPP_
-#define _GST_HAILO_COUNTER_HPP_
+#pragma once
 
 #include <gst/base/gstbasetransform.h>
 
@@ -32,5 +31,3 @@ struct _GstHailoCounterClass
 GType gst_hailocounter_get_type(void);
 
 G_END_DECLS
-
-#endif // _GST_HAILO_COUNTER_HPP_

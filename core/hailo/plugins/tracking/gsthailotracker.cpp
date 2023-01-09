@@ -126,7 +126,12 @@ gst_hailo_tracker_class_init(GstHailoTrackerClass *klass)
                                                      (GParamFlags)(GST_PARAM_CONTROLLABLE | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
     g_object_class_install_property(gobject_class, PROP_KEEP_PAST_METADATA,
                                     g_param_spec_boolean("keep-past-metadata", "Keep past metadata on tracked object",
-                                                         "When set (default) past metadata is kept on tracked objects. When unset past metadata is removed from tracked objects.",
+                                                         "Past metadata are the sub objects on the current tracked object. \n\
+                                                         When set (default) - past metadata is kept on tracked objects. \n\
+                                                         When unset - past metadata is removed from tracked objects. \n\
+                                                         There are some objects that cannot be consistently scaled to match the new location of the tracked object (Like landmarks, mask , matrix). \n\
+                                                         For example, if a face is rotated 90 degrees, the landmarks will not be in the correct location \n\
+                                                         So even when this property is set to True, these metadata types will not be kept.",
                                                          DEFAULT_KEEP_PAST_METADATA,
                                                          (GParamFlags)(GST_PARAM_CONTROLLABLE | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
 

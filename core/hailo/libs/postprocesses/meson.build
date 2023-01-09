@@ -104,6 +104,23 @@ shared_library('centerpose_post',
 )
 
 ################################################
+# MSPN SOURCES
+################################################
+mspn_post_sources = [
+    'pose_estimation/mspn.cpp',
+]
+
+shared_library('mspn_post',
+    mspn_post_sources,
+    cpp_args : hailo_lib_args,
+    include_directories: [hailo_general_inc, include_directories('./')] + xtensor_inc,
+    dependencies : post_deps + [opencv_dep],
+    gnu_symbol_visibility : 'default',
+    install: true,
+    install_dir: post_proc_install_dir,
+)
+
+################################################
 # FACIAL LANDMARKING SOURCES
 ################################################
 
@@ -194,7 +211,7 @@ shared_library('yolo_post',
 # RE-ID SOURCES
 ################################################
 re_id_sources = [
-    're_id/re_id.cpp',
+    'recognition/repvgg.cpp',
 ]
 
 shared_library('re_id',
@@ -207,5 +224,6 @@ shared_library('re_id',
     install_dir: post_proc_install_dir,
 )
 
-libs_postprocesses_dep = declare_dependency(
-  include_directories: [include_directories('.')])
+if get_option('include_python')
+    
+endif

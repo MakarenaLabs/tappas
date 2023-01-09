@@ -203,8 +203,12 @@ gst_hailoexportzmq_transform_ip(GstBaseTransform *trans,
     // Copy is required since zmq::message_t would only wrap the data, so if the buffer is freed/overwritten
     // while the message is sending you will get garbage data or a segfault.
     std::memcpy(json_message.data(), json_buffer.GetString(), json_buffer.GetSize()); 
-    bool send_succeeded = hailoexportzmq->socket->send( json_message, ZMQ_NOBLOCK);
-    if (!send_succeeded)
+#if (CPPZMQ_VERSION_MAJOR >= 4 && CPPZMQ_VERSION_MINOR >= 6 && CPPZMQ_VERSION_PATCH >= 0)
+    zmq::send_result_t result = hailoexportzmq->socket->send(json_message, zmq::send_flags(ZMQ_DONTWAIT));
+#else
+    zmq::detail::send_result_t result = hailoexportzmq->socket->send(json_message, zmq::send_flags(ZMQ_DONTWAIT));
+#endif
+    if (result != json_message.size())
         GST_WARNING("hailoexportzmq failed to send buffer!");
 
     hailoexportzmq->buffer_offset++;

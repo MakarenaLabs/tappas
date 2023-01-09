@@ -2,8 +2,7 @@
  * Copyright (c) 2021-2022 Hailo Technologies Ltd. All rights reserved.
  * Distributed under the LGPL license (https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt)
  **/
-#ifndef _GST_HAILO_FILTER_HPP_
-#define _GST_HAILO_FILTER_HPP_
+#pragma once
 
 #include <gst/base/gstbasetransform.h>
 #include <gst/video/video.h>
@@ -48,5 +47,3 @@ struct _GstHailofilterClass
 GType gst_hailofilter_get_type(void);
 
 G_END_DECLS
-
-#endif // _GST_HAILO_FILTER_HPP_

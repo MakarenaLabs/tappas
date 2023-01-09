@@ -92,9 +92,10 @@ print("hailo.HailoLandmarks")
 print(dir(hailo.HailoLandmarks))
 
 _hailo_landmarks = hailo.HailoLandmarks("TBD", 1)
-# print(f"_hailo_landmarks.add_point = {_hailo_landmarks.add_point()}")
+print(f"_hailo_landmarks.add_point = {_hailo_landmarks.add_point()}")
 print(f"_hailo_landmarks.get_type = {_hailo_landmarks.get_type()}")
 print(f"_hailo_landmarks.get_points = {_hailo_landmarks.get_points()}")
+print(f"_hailo_landmarks.set_points = {_hailo_landmarks.set_points()}")
 print(f"_hailo_landmarks.get_threshold = {_hailo_landmarks.get_threshold()}")
 print(
     f"_hailo_landmarks.get_landmarks_type = {_hailo_landmarks.get_landmarks_type()}"

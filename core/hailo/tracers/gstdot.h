@@ -17,9 +17,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
-#ifndef __GST_DOT_H__
-#define __GST_DOT_H__
+#pragma once
 
 #include <gst/gst.h>
 G_BEGIN_DECLS
@@ -30,4 +28,3 @@ gst_dot_do_render (const gchar * dot_string, GstDotRender render,
     gpointer args);
 gboolean gst_dot_x11_render (const gchar * dot_string, gpointer args);
 G_END_DECLS
-#endif //__GST_DOT_H__

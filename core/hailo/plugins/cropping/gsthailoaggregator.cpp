@@ -86,7 +86,7 @@ gst_hailoaggregator_class_init(GstHailoAggregatorClass *klass)
     gstelement_class->change_state = gst_hailoaggregator_change_state;
 
     g_object_class_install_property(gobject_class, PROP_FLATTEN_DETECTIONS,
-                                    g_param_spec_boolean("flatten-detections", "Flatten detections", "perform a 'flattening' functionality on the detection metadata when receiving each frame", true,
+                                    g_param_spec_boolean("flatten-detections", "Flatten detections", "perform a 'flattening' functionality on the detection metadata when receiving each frame", false,
                                                          (GParamFlags)(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | GST_PARAM_MUTABLE_READY)));
 }
 
@@ -115,7 +115,7 @@ gst_hailoaggregator_init(GstHailoAggregator *hailoaggregator)
     hailoaggregator->num_of_frames = 0;
     hailoaggregator->mainframe = NULL;
 
-    hailoaggregator->flatten_detections = true;
+    hailoaggregator->flatten_detections = false;
     hailoaggregator->eos_main = false;
     hailoaggregator->eos_sub = false;
 }

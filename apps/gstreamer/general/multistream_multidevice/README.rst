@@ -21,7 +21,7 @@ Prerequisites
 
 
 * TensorPC
-* Ubuntu 18.04
+* Ubuntu 20.04
 * `RTSP <../../../../docs/terminology.rst#real-time-streaming-protocol-rtsp>`_ Cameras, We recommend using: `AXIS M10 Network Cameras <https://www.axis.com/products/axis-m1045-lw>`_
 * Two Hailo-8 devices connected via PCIe
 
@@ -80,7 +80,7 @@ These apps are based on our `multi stream pipeline template <../../../../docs/pi
 How to use Retraining to replace models
 ---------------------------------------
 
-.. note:: It is recommended to first read the :ref:`Retraining TAPPAS Models<retraining_tappas_models>` page. 
+.. note:: It is recommended to first read the `Retraining TAPPAS Models <../../../../docs/write_your_own_application/retraining-tappas-models.rst>`_ page. 
 
 You can use Retraining Dockers (available on Hailo Model Zoo), to replace the following models with ones
 that are trained on your own dataset:

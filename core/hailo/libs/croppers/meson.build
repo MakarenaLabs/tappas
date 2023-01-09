@@ -53,6 +53,23 @@ shared_library('re_id',
 )
 
 ################################################
+# MSPN algorithm
+################################################
+mspn_sources = [
+    'mspn/mspn.cpp',
+]
+
+shared_library('mspn',
+    mspn_sources,
+    cpp_args : hailo_lib_args,
+    include_directories: [hailo_general_inc],
+    dependencies : post_deps + [opencv_dep],
+    gnu_symbol_visibility : 'default',
+    install: true,
+    install_dir: croppers_install_dir,
+)
+
+################################################
 # Video Monitoring System algorithms
 ################################################
 vms_sources = [

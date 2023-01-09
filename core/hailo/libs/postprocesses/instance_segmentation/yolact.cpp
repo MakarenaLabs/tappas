@@ -13,6 +13,7 @@
 #include <tuple>
 #include <vector>
 
+#include "common/labels/coco_eighty.hpp"
 #include "common/labels/yolact_twenty.hpp"
 #include "common/math.hpp"
 #include "common/nms.hpp"
@@ -41,28 +42,13 @@
 #define NMS_THRESHOLD 0.5
 #define IMAGE_SIZE 512
 
-// Output layer names for yolact_regnetx_800mf_fpn_20classes network
-const char *PROTO_LAYER = "yolact_regnetx_800mf_20classes/conv86";
-// Set 0
-const char *BBOX_0 = "yolact_regnetx_800mf_20classes/conv81";
-const char *MASK_0 = "yolact_regnetx_800mf_20classes/conv83";
-const char *CONF_0 = "yolact_regnetx_800mf_20classes/conv82";
-// Set 1
-const char *BBOX_1 = "yolact_regnetx_800mf_20classes/conv73";
-const char *MASK_1 = "yolact_regnetx_800mf_20classes/conv75";
-const char *CONF_1 = "yolact_regnetx_800mf_20classes/conv74";
-// Set 2
-const char *BBOX_2 = "yolact_regnetx_800mf_20classes/conv61";
-const char *MASK_2 = "yolact_regnetx_800mf_20classes/conv63";
-const char *CONF_2 = "yolact_regnetx_800mf_20classes/conv62";
-// Set 3
-const char *BBOX_3 = "yolact_regnetx_800mf_20classes/conv64";
-const char *MASK_3 = "yolact_regnetx_800mf_20classes/conv66";
-const char *CONF_3 = "yolact_regnetx_800mf_20classes/conv65";
-// Set 4
-const char *BBOX_4 = "yolact_regnetx_800mf_20classes/conv67";
-const char *MASK_4 = "yolact_regnetx_800mf_20classes/conv69";
-const char *CONF_4 = "yolact_regnetx_800mf_20classes/conv68";
+// Supported Networks
+enum network_type
+{
+    YOLACT1_6,
+    YOLACT800,
+    YOLACT20CLASSES
+};
 
 /**
  * @brief Extract the anchors
@@ -318,7 +304,7 @@ void detect_instances(std::vector<HailoDetection> &objects,
                       auto &all_scores,
                       auto &all_boxes,
                       auto &all_masks,
-                      const float score_threshold)
+                      const float score_threshold, network_type network)
 {
     // First get the max score of each row
     xt::xarray<float, xt::layout_type::row_major> max_scores = amax_row(all_scores.data(), all_scores.size(), all_scores.shape(0), all_scores.shape(1));
@@ -351,9 +337,16 @@ void detect_instances(std::vector<HailoDetection> &objects,
 
         // We add 1 to class_index since we excluded class 0 (background)
         class_index = xt::argmax(xt::row(scores, index))(0) + 1;
-        std::string label = common::yolact_twenty[class_index];
-        confidence = scores(index, class_index - 1); // Decrement class_index since scores excludes class 0 (background)
-
+        std::string label;
+        if (network == network_type::YOLACT20CLASSES)
+        {
+            label = common::yolact_twenty[class_index];
+        }
+        else
+        {
+            label = common::coco_eighty[class_index];
+        }
+        confidence = scores(index, class_index - 1);                                                           // Decrement class_index since scores excludes class 0 (background)
         xt::xarray<float> mask_coefficients = xt::squeeze(xt::view(tanned_masks, xt::keep(index), xt::all())); // We are only interested in the coefficients of this instance
 
         HailoBBox bbox(xmin, ymin, w, h);
@@ -379,12 +372,98 @@ void detect_instances(std::vector<HailoDetection> &objects,
  * @return std::vector<HailoDetection> final detections vector with mask to each detection
  */
 std::vector<HailoDetection> instance_segmentation_post(std::map<std::string, HailoTensorPtr> tensors,
-                                                          const xt::xarray<float> &anchors,
-                                                          const int num_classes,
-                                                          const int image_size,
-                                                          const float score_threshold,
-                                                          const float nms_threshold)
+                                                       const xt::xarray<float> &anchors,
+                                                       const int num_classes,
+                                                       const int image_size,
+                                                       const float score_threshold,
+                                                       const float nms_threshold,
+                                                       network_type network)
 {
+    std::string PROTO_LAYER, BBOX_0, MASK_0, CONF_0, BBOX_1, MASK_1, CONF_1, BBOX_2, MASK_2, CONF_2, BBOX_3, MASK_3, CONF_3, BBOX_4, MASK_4, CONF_4;
+    std::string NETWORK_GROUP;
+    if (network == network_type::YOLACT20CLASSES)
+    {
+        NETWORK_GROUP = "yolact_regnetx_800mf_20classes";
+        // Output layer names for yolact_regnetx_800mf_fpn_20classes network
+        PROTO_LAYER = NETWORK_GROUP + "/conv86";
+        // Set 0
+        BBOX_0 = NETWORK_GROUP + "/conv81";
+        MASK_0 = NETWORK_GROUP + "/conv83";
+        CONF_0 = NETWORK_GROUP + "/conv82";
+        // Set 1
+        BBOX_1 = NETWORK_GROUP + "/conv73";
+        MASK_1 = NETWORK_GROUP + "/conv75";
+        CONF_1 = NETWORK_GROUP + "/conv74";
+        // Set 2
+        BBOX_2 = NETWORK_GROUP + "/conv61";
+        MASK_2 = NETWORK_GROUP + "/conv63";
+        CONF_2 = NETWORK_GROUP + "/conv62";
+        // Set 3
+        BBOX_3 = NETWORK_GROUP + "/conv64";
+        MASK_3 = NETWORK_GROUP + "/conv66";
+        CONF_3 = NETWORK_GROUP + "/conv65";
+        // Set 4
+        BBOX_4 = NETWORK_GROUP + "/conv67";
+        MASK_4 = NETWORK_GROUP + "/conv69";
+        CONF_4 = NETWORK_GROUP + "/conv68";
+    }
+    else if (network == network_type::YOLACT1_6)
+    {
+        NETWORK_GROUP = "yolact_regnetx_1_6gf";
+
+        // output layers for yolact_regnetx_1_6gf
+        PROTO_LAYER = NETWORK_GROUP + "/conv92";
+        // Set 0
+        BBOX_0 = NETWORK_GROUP + "/conv87";
+        MASK_0 = NETWORK_GROUP + "/conv89";
+        CONF_0 = NETWORK_GROUP + "/conv88";
+        // Set 1
+        BBOX_1 = NETWORK_GROUP + "/conv79";
+        MASK_1 = NETWORK_GROUP + "/conv81";
+        CONF_1 = NETWORK_GROUP + "/conv80";
+        // Set 2
+        BBOX_2 = NETWORK_GROUP + "/conv67";
+        MASK_2 = NETWORK_GROUP + "/conv69";
+        CONF_2 = NETWORK_GROUP + "/conv68";
+        // Set 3
+        BBOX_3 = NETWORK_GROUP + "/conv70";
+        MASK_3 = NETWORK_GROUP + "/conv72";
+        CONF_3 = NETWORK_GROUP + "/conv71";
+        // Set 4
+        BBOX_4 = NETWORK_GROUP + "/conv73";
+        MASK_4 = NETWORK_GROUP + "/conv75";
+        CONF_4 = NETWORK_GROUP + "/conv74";
+    }
+    else if (network == network_type::YOLACT800)
+    {
+        NETWORK_GROUP = "yolact_regnetx_800mf";
+        // // Output layer names for yolact_regnetx_800mf_fpn
+        PROTO_LAYER = NETWORK_GROUP + "/conv86";
+        // Set 0
+        BBOX_0 = NETWORK_GROUP + "/conv81";
+        MASK_0 = NETWORK_GROUP + "/conv83";
+        CONF_0 = NETWORK_GROUP + "/conv82";
+        // Set 1
+        BBOX_1 = NETWORK_GROUP + "/conv73";
+        MASK_1 = NETWORK_GROUP + "/conv75";
+        CONF_1 = NETWORK_GROUP + "/conv74";
+        // Set 2
+        BBOX_2 = NETWORK_GROUP + "/conv61";
+        MASK_2 = NETWORK_GROUP + "/conv63";
+        CONF_2 = NETWORK_GROUP + "/conv62";
+        // Set 3
+        BBOX_3 = NETWORK_GROUP + "/conv64";
+        MASK_3 = NETWORK_GROUP + "/conv66";
+        CONF_3 = NETWORK_GROUP + "/conv65";
+        // Set 4
+        BBOX_4 = NETWORK_GROUP + "/conv67";
+        MASK_4 = NETWORK_GROUP + "/conv69";
+        CONF_4 = NETWORK_GROUP + "/conv68";
+    }
+    else
+    {
+        throw std::invalid_argument("Network is not supported");
+    }
 
     std::vector<HailoDetection> objects; // The detection meta we will eventually return
 
@@ -440,7 +519,7 @@ std::vector<HailoDetection> instance_segmentation_post(std::map<std::string, Hai
     auto mask_4_reshaped = xt::reshape_view(mask_4, {(int)mask_4.shape(0) * (int)mask_4.shape(1) * ((int)mask_4.shape(2) / 32), 32});
     auto all_masks = xt::concatenate(xt::xtuple(mask_0_reshaped, mask_1_reshaped, mask_2_reshaped, mask_3_reshaped, mask_4_reshaped));
 
-    detect_instances(objects, anchors, confidences, all_boxes, all_masks, score_threshold);
+    detect_instances(objects, anchors, confidences, all_boxes, all_masks, score_threshold, network);
 
     common::nms(objects, nms_threshold);
 
@@ -455,15 +534,38 @@ std::vector<HailoDetection> instance_segmentation_post(std::map<std::string, Hai
  *
  * @param roi the region of interest
  */
-void yolact(HailoROIPtr roi)
+void yolact(HailoROIPtr roi, network_type network, void *params_void_ptr)
 {
-    const int num_classes = 20;
-    const xt::xarray<float> anchors = get_anchors(IMAGE_SIZE);
+    YolactParams *params = reinterpret_cast<YolactParams *>(params_void_ptr);
+    int num_classes;
+    if (network == network_type::YOLACT20CLASSES)
+    {
+        num_classes = 20;
+    }
+    else
+    {
+        num_classes = 81;
+    }
+    const xt::xarray<float> anchors = params->anchors;
     std::map<std::string, HailoTensorPtr> tensors = roi->get_tensors_by_name();
     std::vector<HailoDetection> detections = instance_segmentation_post(tensors, anchors, num_classes, IMAGE_SIZE,
-                                                                           SCORE_THRESHOLD, NMS_THRESHOLD);
-
+                                                                        SCORE_THRESHOLD, NMS_THRESHOLD, network);
     hailo_common::add_detections(roi, detections);
+}
+
+void yolact_20_classes(HailoROIPtr roi, void *params_void_ptr)
+{
+    yolact(roi, network_type::YOLACT20CLASSES, params_void_ptr);
+}
+
+void yolact800mf(HailoROIPtr roi, void *params_void_ptr)
+{
+    yolact(roi, network_type::YOLACT800, params_void_ptr);
+}
+
+void yolact1_6gf(HailoROIPtr roi, void *params_void_ptr)
+{
+    yolact(roi, network_type::YOLACT1_6, params_void_ptr);
 }
 
 /**
@@ -471,7 +573,19 @@ void yolact(HailoROIPtr roi)
  *
  * @param roi the region of interest
  */
-void filter(HailoROIPtr roi)
+void filter(HailoROIPtr roi, void *params_void_ptr)
 {
-    yolact(roi);
+    yolact(roi, network_type::YOLACT1_6, params_void_ptr);
+}
+
+YolactParams *init(const std::string config_path, const std::string function_name)
+{
+    YolactParams *params = new YolactParams(get_anchors(IMAGE_SIZE));
+    return params;
+}
+
+void free_resources(void *params_void_ptr)
+{
+    YolactParams *params = reinterpret_cast<YolactParams *>(params_void_ptr);
+    delete params;
 }

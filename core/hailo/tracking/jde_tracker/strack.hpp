@@ -41,6 +41,14 @@ enum TrackState
     Removed
 };
 
+/*
+There are some objects that cannot be consistently scaled to match the new location of the tracked object
+(Like landmarks, mask , matrix).
+For example, if a face is rotated 90 degrees, the landmarks will not be in the correct location.
+These metadata types will never be kept, even if keep_past_metadata is set to true.
+*/
+const hailo_object_t no_keep_track_objects[] = {HAILO_LANDMARKS, HAILO_MATRIX, HAILO_DEPTH_MASK, HAILO_CLASS_MASK};
+
 class STrack
 {
     //******************************************************************
@@ -117,19 +125,20 @@ public:
     {
         for (auto object : this->m_hailo_detection->get_objects())
         {
-            if (keep_past_metadata){
+            hailo_object_t object_type = object->get_type();
+            if (object_type == HAILO_UNIQUE_ID) {
                 new_detection->add_object(object);
-            }    
-            else {
-                if (object->get_type() == HAILO_UNIQUE_ID) {
-                    HailoUniqueIDPtr id = std::dynamic_pointer_cast<HailoUniqueID>(object);
-                    if (id->get_mode() == TRACKING_ID){
-                        new_detection->add_object(object);
-                    }
+            }
+            else if(keep_past_metadata)
+            {
+                // Add the sub object only if its type is not under no_keep_track_objects
+                if (std::find(std::begin(no_keep_track_objects), std::end(no_keep_track_objects), object_type) == std::end(no_keep_track_objects))
+                {
+                    new_detection->add_unscaled_object(object);
                 }
             }
         }
-        
+
         this->m_hailo_detection = new_detection;
         update_hailo_bbox();
     }

@@ -24,8 +24,11 @@ struct _GstHailoOverlay
     GstBaseTransform base_hailooverlay;
     gint line_thickness;
     gint font_thickness;
+    gfloat landmark_point_radius;
     gboolean face_blur;
     gboolean show_confidence;
+    gboolean local_gallery;
+    guint mask_overlay_n_threads;
 };
 
 struct _GstHailoOverlayClass

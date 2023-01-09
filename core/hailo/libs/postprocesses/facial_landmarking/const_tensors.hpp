@@ -1,10 +1,8 @@
 /**
-* Copyright (c) 2021-2022 Hailo Technologies Ltd. All rights reserved.
-* Distributed under the LGPL license (https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt)
-**/
-#ifndef _GST_HAILO_CONST_TENSORS_HPP_
-#define _GST_HAILO_CONST_TENSORS_HPP_
-
+ * Copyright (c) 2021-2022 Hailo Technologies Ltd. All rights reserved.
+ * Distributed under the LGPL license (https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt)
+ **/
+#pragma once
 #include "xtensor/xarray.hpp"
 
 xt::xarray<float> TDDFA_RESCALE_PARAMS_MEAN{3.4926363e-04, 2.5279013e-07, -6.8751979e-07, 6.0167957e+01,
@@ -72,5 +70,3 @@ xt::xarray<float> bfm_u_base =
       6.97602539e+03, -3.81594766e+04, 1.11353492e+05, 2.29342090e+04, -4.07978281e+04, 9.95834531e+04, 6.79684863e+03,
       -4.05065586e+04, 1.11575406e+05, -4.01142456e+02, -4.08664961e+04, 1.12449688e+05, -7.49982080e+03, -4.04330664e+04,
       1.11496352e+05}};
-
-#endif

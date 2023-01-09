@@ -17,9 +17,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
-#ifndef __GST_PARSER_H__
-#define __GST_PARSER_H__
+#pragma once
 
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -49,4 +47,3 @@ void parser_line(GstCTFParser * parser, gchar * option);
 void parser_finalize(GstCTFParser * parser);
 
 G_END_DECLS
-#endif /* __GST_PARSER_H__ */

@@ -36,7 +36,7 @@ function print_usage() {
     echo ""
     echo "Options:"
     echo "  --help                  Show this help"
-    echo "  --network NETWORK       Set network to use. choose from [lightface, retinaface], default is lightface"
+    echo "  --network NETWORK       Set network to use. choose from [lightface, retinaface, scrfd], default is lightface"
     echo "  -i INPUT --input INPUT  Set the input source (default $input_source)"
     echo "  --show-fps              Print fps"
     echo "  --print-gst-launch      Print the ready gst-launch command without running it"
@@ -60,6 +60,10 @@ function parse_args() {
                 network_name="$2"
                 hef_path="$RESOURCES_DIR/retinaface_mobilenet_v1.hef"
                 json_config_path="$RESOURCES_DIR/configs/retinaface.json"
+            elif [ $2 == "scrfd" ]; then
+                network_name="$2"
+                hef_path="$RESOURCES_DIR/scrfd_10g.hef"
+                json_config_path="$RESOURCES_DIR/configs/scrfd.json"
             elif [ $2 != "lightface" ]; then
                 echo "Received invalid network: $2. See expected arguments below:"
                 print_usage
@@ -99,7 +103,7 @@ PIPELINE="gst-launch-1.0 \
     t. ! queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! mux. \
     t. ! videoscale ! \
     queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
-    hailonet hef-path=$hef_path is-active=true ! \
+    hailonet hef-path=$hef_path ! \
     queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
     hailofilter function-name=$network_name so-path=$postprocess_so config-path=$json_config_path qos=false ! mux. \
     mux. ! queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \

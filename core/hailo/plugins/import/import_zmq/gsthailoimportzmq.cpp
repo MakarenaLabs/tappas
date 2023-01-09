@@ -2,7 +2,10 @@
  * Copyright (c) 2021-2022 Hailo Technologies Ltd. All rights reserved.
  * Distributed under the LGPL license (https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt)
  **/
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include "gsthailoimportzmq.hpp"
+#pragma GCC diagnostic pop
 #include "gst_hailo_meta.hpp"
 #include <chrono>
 #include <cstdio>
@@ -201,13 +204,17 @@ gst_hailoimportzmq_transform_ip(GstBaseTransform *trans,
 
     // Recv the message
     zmq::message_t recv_message;
-    bool recv_succeeded = true;
+#if (CPPZMQ_VERSION_MAJOR >= 4 && CPPZMQ_VERSION_MINOR >= 6 && CPPZMQ_VERSION_PATCH >= 0)
+    zmq::recv_result_t recv_succeeded = 0;
+#else
+    zmq::detail::recv_result_t recv_succeeded = 0;
+#endif
     while (recv_message.size() == 0)
     {
-        recv_succeeded = hailoimportzmq->socket->recv(&recv_message, ZMQ_NOBLOCK);
+        recv_succeeded = hailoimportzmq->socket->recv(recv_message, zmq::recv_flags(ZMQ_DONTWAIT));
         sleep(0);  // yield the scheduler to prevent the thread from spinning the CPU core
     }
-    if (!recv_succeeded)
+    if (recv_succeeded <= 0)
         GST_WARNING("hailoimportzmq failed to send buffer!");
 
     // Decode the recvd JSON

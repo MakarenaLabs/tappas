@@ -2,8 +2,7 @@
  * Copyright (c) 2021-2022 Hailo Technologies Ltd. All rights reserved.
  * Distributed under the LGPL license (https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt)
  **/
-#ifndef _HAILO_YOLO_POST_HPP_
-#define _HAILO_YOLO_POST_HPP_
+#pragma once
 #include "hailo_objects.hpp"
 #include "hailo_common.hpp"
 #include "yolo_output.hpp"
@@ -80,10 +79,11 @@ void yolov3(HailoROIPtr roi, void *params_void_ptr);
 void yolov4(HailoROIPtr roi, void *params_void_ptr);
 void tiny_yolov4_license_plates(HailoROIPtr roi, void *params_void_ptr);
 void yolov5_no_persons(HailoROIPtr roi, void *params_void_ptr);
+void yolov5_no_faces(HailoROIPtr roi, void *params_void_ptr);
 void yolov5_counter(HailoROIPtr roi, void *params_void_ptr);
 void yolov5_vehicles_only(HailoROIPtr roi, void *params_void_ptr);
 void yolov5_personface(HailoROIPtr roi, void *params_void_ptr);
+void yolov5_personface_letterbox(HailoROIPtr roi, void *params_void_ptr);
 void yolov5_adas(HailoROIPtr roi, void *params_void_ptr);
 
 __END_DECLS
-#endif

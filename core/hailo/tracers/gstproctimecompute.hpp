@@ -17,9 +17,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
-#ifndef __GST_PROC_TIME_COMPUTE_HPP__
-#define __GST_PROC_TIME_COMPUTE_HPP__
+#pragma once
 
 #include <gst/gst.h>
 
@@ -39,5 +37,3 @@ gboolean gst_proctime_proc_time (GstProcTime * proc_time,
 void gst_proctime_free (GstProcTime * proc_time);
 
 G_END_DECLS
-
-#endif //__GST_PROC_CTIME_COMPUTE_HPP__

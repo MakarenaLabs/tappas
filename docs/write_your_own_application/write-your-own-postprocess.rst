@@ -292,8 +292,7 @@ Let's look at the yolo networks as an example, open up `libs/postprocesses/detec
 
 .. code-block:: cpp
 
-   #ifndef _HAILO_YOLO_POST_HPP_
-   #define _HAILO_YOLO_POST_HPP_
+   #pragma once
    #include "hailo_objects.hpp"
    #include "hailo_common.hpp"
 
@@ -310,7 +309,6 @@ Let's look at the yolo networks as an example, open up `libs/postprocesses/detec
    void yolov5_counter(HailoROIPtr roi);
    void yolov5_vehicles_only(HailoROIPtr roi);
    __END_DECLS
-   #endif
 
 Any of the functions declared here can be given as a ``function-name`` property to the ``hailofilter`` element. Condsider this pipeline for running the ``Yolov5`` network:
 

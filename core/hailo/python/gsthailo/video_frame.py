@@ -9,7 +9,9 @@
 
 from contextlib import contextmanager
 
+
 import hailo
+import platform
 import numpy as np
 
 # Important: Keep the order as is
@@ -24,7 +26,16 @@ class VideoFrame:
         self._buffer = buffer
         self._roi = roi
         self._video_info = GstVideo.VideoInfo()
-        self._video_info.from_caps(caps)
+        
+        python_version = platform.sys.version_info
+        
+        if python_version.major is not 3:
+            raise RuntimeError(f"Python {python_version.major}.{python_version.minor} is not supported")
+        
+        if python_version.minor < 10:
+            self._video_info.from_caps(caps)
+        else:
+            self._video_info.new_from_caps(caps)
 
     @property
     def roi(self) -> hailo.HailoROI:

@@ -63,7 +63,7 @@ parse_args $@
 PIPELINE="gst-launch-1.0 \
     v4l2src device=$input_source ! video/x-raw,format=YUY2,width=1280,height=720,framerate=30/1 ! \
     queue leaky=downstream max-size-buffers=5 max-size-bytes=0 max-size-time=0 ! \
-    hailonet hef-path=$hef_path is-active=true ! \
+    hailonet hef-path=$hef_path ! \
     queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
     hailofilter function-name=$network_name config-path=$json_config_path so-path=$postprocess_so qos=false ! \
     queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \

@@ -20,7 +20,8 @@ G_BEGIN_DECLS
 #define GST_HAILO_BASE_CROPPER_GET_CLASS(obj) \
         (G_TYPE_INSTANCE_GET_CLASS ((obj),GST_TYPE_HAILO_BASE_CROPPER,GstHailoBaseCropperClass))
 
-#define HAILO_BASE_CROPPER_SUPPORTED_FORMATS "{ RGB, RGBA, YUY2 }"
+#define GST_HAILO_CROPPER_MAX_FILTER_STREAMS 10
+#define HAILO_BASE_CROPPER_SUPPORTED_FORMATS "{ RGB, RGBA, YUY2, NV12 }"
 #define HAILO_BASE_CROPPER_VIDEO_CAPS \
     GST_VIDEO_CAPS_MAKE(HAILO_BASE_CROPPER_SUPPORTED_FORMATS)
 
@@ -34,8 +35,10 @@ struct _GstHailoBaseCropper
     gboolean drop_uncropped_buffers;
     uint internal_offset;
     uint cropping_period;
+    uint num_streams_to_filter = 0;
     GstPad *sinkpad, *srcpad_crop, *srcpad_main;
     std::map<std::string, int> stream_ids_buff_offset;
+    const gchar *filter_streams[GST_HAILO_CROPPER_MAX_FILTER_STREAMS];
 };
 
 struct _GstHailoBaseCropperClass
@@ -47,10 +50,7 @@ struct _GstHailoBaseCropperClass
 };
 
 G_GNUC_INTERNAL GType gst_hailo_basecropper_get_type(void);
-void resize_bilinear(GstHailoBaseCropper *basecropper, cv::Mat &cropped_image, cv::Mat &resized_image, HailoROIPtr roi, GstVideoFormat image_format);
-void resize_nearest_neighbor(GstHailoBaseCropper *basecropper, cv::Mat &cropped_image, cv::Mat &resized_image, HailoROIPtr roi, GstVideoFormat image_format);
-void resize_bicubic(GstHailoBaseCropper *basecropper, cv::Mat &cropped_image, cv::Mat &resized_image, HailoROIPtr roi, GstVideoFormat image_format);
-void resize_inter_area(GstHailoBaseCropper *basecropper, cv::Mat &cropped_image, cv::Mat &resized_image, HailoROIPtr roi, GstVideoFormat image_format);
-void resize_letterbox(GstHailoBaseCropper *basecropper, cv::Mat &cropped_image, cv::Mat &resized_image, HailoROIPtr roi, GstVideoFormat image_format);
+void resize_normal(cv::InterpolationFlags method, cv::Mat &cropped_image, cv::Mat &resized_image, GstVideoFormat image_format);
+void resize_letterbox(cv::InterpolationFlags method, cv::Mat &cropped_image, cv::Mat &resized_image, HailoROIPtr roi);
 
 G_END_DECLS

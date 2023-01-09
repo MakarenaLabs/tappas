@@ -38,8 +38,11 @@ enum
     PROP_0,
     PROP_LINE_THICKNESS,
     PROP_FONT_THICKNESS,
+    PROP_LANDMARK_POINT_RADIUS,
     PROP_FACE_BLUR,
     PROP_SHOW_CONF,
+    PROP_MASK_OVERLAY_N_THREADS,
+    PROP_LOCAL_GALLERY,
 };
 
 static void
@@ -56,10 +59,10 @@ gst_hailooverlay_class_init(GstHailoOverlayClass *klass)
        base_class_init if you intend to subclass this class. */
     gst_element_class_add_pad_template(GST_ELEMENT_CLASS(klass),
                                        gst_pad_template_new("src", GST_PAD_SRC, GST_PAD_ALWAYS,
-                                                            gst_caps_from_string(GST_VIDEO_CAPS_MAKE("{ RGB, YUY2, RGBA }"))));
+                                                            gst_caps_from_string(GST_VIDEO_CAPS_MAKE("{ RGB, YUY2, RGBA, NV12 }"))));
     gst_element_class_add_pad_template(GST_ELEMENT_CLASS(klass),
                                        gst_pad_template_new("sink", GST_PAD_SINK, GST_PAD_ALWAYS,
-                                                            gst_caps_from_string(GST_VIDEO_CAPS_MAKE("{ RGB, YUY2, RGBA }"))));
+                                                            gst_caps_from_string(GST_VIDEO_CAPS_MAKE("{ RGB, YUY2, RGBA, NV12 }"))));
 
     gst_element_class_set_static_metadata(GST_ELEMENT_CLASS(klass),
                                           "hailooverlay - overlay element",
@@ -81,6 +84,16 @@ gst_hailooverlay_class_init(GstHailoOverlayClass *klass)
     g_object_class_install_property(gobject_class, PROP_SHOW_CONF,
                                     g_param_spec_boolean("show-confidence", "show-confidence", "Whether to display confidence on detections, classifications etc...", true,
                                                          (GParamFlags)(GST_PARAM_CONTROLLABLE | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+    // install property mask-overlay-n-threads uint default value 0
+    g_object_class_install_property(gobject_class, PROP_MASK_OVERLAY_N_THREADS,
+                                    g_param_spec_uint("mask-overlay-n-threads", "mask-overlay-n-threads", "Number of threads to use for parallel mask drawing. Default 0 (Will use the default value OpenCV initializes - effected by the system capabilities).", 0, G_MAXUINT, 0,
+                                                      (GParamFlags)(GST_PARAM_MUTABLE_READY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+    g_object_class_install_property(gobject_class, PROP_LOCAL_GALLERY,
+                                    g_param_spec_boolean("local-gallery", "local-gallery", "Whether to display Identified and UnIdentified ROI's taken from the local gallery, as well as the Global ID they receive.", false,
+                                                         (GParamFlags)(GST_PARAM_CONTROLLABLE | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+    g_object_class_install_property(gobject_class, PROP_LANDMARK_POINT_RADIUS,
+                                    g_param_spec_float("landmark-point-radius", "landmark-point-radius", "The radius of the points when drawing landmarks. Default 3.", 0, G_MAXFLOAT, 3,
+                                                       (GParamFlags)(GST_PARAM_MUTABLE_READY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
 
     gobject_class->dispose = gst_hailooverlay_dispose;
     gobject_class->finalize = gst_hailooverlay_finalize;
@@ -97,6 +110,9 @@ gst_hailooverlay_init(GstHailoOverlay *hailooverlay)
     hailooverlay->font_thickness = 1;
     hailooverlay->face_blur = false;
     hailooverlay->show_confidence = true;
+    hailooverlay->local_gallery = false;
+    hailooverlay->landmark_point_radius = 3;
+    hailooverlay->mask_overlay_n_threads = 0;
 }
 
 void gst_hailooverlay_set_property(GObject *object, guint property_id,
@@ -114,11 +130,20 @@ void gst_hailooverlay_set_property(GObject *object, guint property_id,
     case PROP_FONT_THICKNESS:
         hailooverlay->font_thickness = g_value_get_int(value);
         break;
+    case PROP_LANDMARK_POINT_RADIUS:
+        hailooverlay->landmark_point_radius = g_value_get_float(value);
+        break;
     case PROP_FACE_BLUR:
         hailooverlay->face_blur = g_value_get_boolean(value);
         break;
     case PROP_SHOW_CONF:
         hailooverlay->show_confidence = g_value_get_boolean(value);
+        break;
+    case PROP_MASK_OVERLAY_N_THREADS:
+        hailooverlay->mask_overlay_n_threads = g_value_get_uint(value);
+        break;
+    case PROP_LOCAL_GALLERY:
+        hailooverlay->local_gallery = g_value_get_boolean(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
@@ -141,11 +166,20 @@ void gst_hailooverlay_get_property(GObject *object, guint property_id,
     case PROP_FONT_THICKNESS:
         g_value_set_int(value, hailooverlay->font_thickness);
         break;
+    case PROP_LANDMARK_POINT_RADIUS:
+        g_value_set_float(value, hailooverlay->landmark_point_radius);
+        break;
     case PROP_FACE_BLUR:
         g_value_set_boolean(value, hailooverlay->face_blur);
         break;
     case PROP_SHOW_CONF:
         g_value_set_boolean(value, hailooverlay->show_confidence);
+        break;
+    case PROP_LOCAL_GALLERY:
+        g_value_set_boolean(value, hailooverlay->local_gallery);
+        break;
+    case PROP_MASK_OVERLAY_N_THREADS:
+        g_value_set_uint(value, hailooverlay->mask_overlay_n_threads);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
@@ -222,8 +256,9 @@ gst_hailooverlay_transform_ip(GstBaseTransform *trans,
         face_blur(mat, hailo_roi);
     }
     if (hmat)
-    { // Draw all results of the given roi on mat.
-        ret = draw_all(*hmat.get(), hailo_roi, hailooverlay->show_confidence);
+    {
+        // Draw all results of the given roi on mat.
+        ret = draw_all(*hmat.get(), hailo_roi, hailooverlay->landmark_point_radius, hailooverlay->show_confidence, hailooverlay->local_gallery, hailooverlay->mask_overlay_n_threads);
     }
     if (ret != OVERLAY_STATUS_OK)
     {

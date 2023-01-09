@@ -61,7 +61,7 @@ This app is based on our `single network pipeline template <../../../../docs/pip
 How to use Retraining to replace models
 ---------------------------------------
 
-.. note:: It is recommended to first read the :ref:`Retraining TAPPAS Models<retraining_tappas_models>` page. 
+.. note:: It is recommended to first read the `Retraining TAPPAS Models <../../../../docs/write_your_own_application/retraining-tappas-models.rst>`_ page. 
 
 You can use Retraining Dockers (available on Hailo Model Zoo), to replace the following models with ones
 that are trained on your own dataset:
@@ -70,7 +70,7 @@ that are trained on your own dataset:
   
   - `Retraining docker <https://github.com/hailo-ai/hailo_model_zoo/tree/master/training/centerpose>`_
 
-    - **Apply the changes** written on 'on-chip YUY2->YUV layers' section on :ref:`Retraining TAPPAS Models<retraining_tappas_models>`
+    - **Apply the changes** written on 'on-chip YUY2->YUV layers' section on `Retraining TAPPAS Models <../../../../docs/write_your_own_application/retraining-tappas-models.rst>`_
   - TAPPAS changes to replace model:
 
     - Replace HEF_PATH on the .sh file

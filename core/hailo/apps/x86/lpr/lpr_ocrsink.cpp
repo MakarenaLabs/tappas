@@ -123,31 +123,26 @@ void ocr_sink(HailoROIPtr roi, cv::Mat &mat, std::string stream_id)
             // For each license plate detection, check the classifications
             classifications = hailo_common::get_hailo_classifications(lp_detection);
             if (classifications.size() != 1)
+            {
+                vehicle_detection->remove_object(lp_detection);  // If no ocr was found then remove this license plate
                 continue;
+            }
             HailoClassificationPtr classification = classifications[0];
             if (OCR_LABEL_TYPE == classification->get_classification_type())
             {
                 confidence = classification->get_confidence();
                 license_plate_ocr_label = classification->get_label();
-                if (confidence >= OCR_SCORE_THRESHOLD && license_plate_ocr_label.size() > 6)
-                {
-                    if (std::find(seen_ocr_track_ids.begin(), seen_ocr_track_ids.end(), unique_ids[0]->get_id()) != seen_ocr_track_ids.end())
-                    {
-                        // this track id was already updated
-                        continue;
-                    }
-                    else
-                    {
-                        seen_ocr_track_ids.emplace_back(unique_ids[0]->get_id());
-                    }
+                if (std::find(seen_ocr_track_ids.begin(), seen_ocr_track_ids.end(), unique_ids[0]->get_id()) != seen_ocr_track_ids.end())
+                    continue;  // this track id was already updated
+                else
+                    seen_ocr_track_ids.emplace_back(unique_ids[0]->get_id());
 
-                    // Update the tracker with the found ocr
-                    HailoTracker::GetInstance().add_object_to_track(jde_tracker_name,
-                                                                    unique_ids[0]->get_id(),
-                                                                    classification);
+                // Update the tracker with the found ocr
+                HailoTracker::GetInstance().add_object_to_track(jde_tracker_name,
+                                                                unique_ids[0]->get_id(),
+                                                                classification);
 
-                    catalog_license_plate(license_plate_ocr_label, confidence, license_plate_box, mat);
-                }
+                catalog_license_plate(license_plate_ocr_label, confidence, license_plate_box, mat);
             }
         }
     }
@@ -157,25 +152,7 @@ void ocr_sink(HailoROIPtr roi, cv::Mat &mat, std::string stream_id)
 
 void filter(HailoROIPtr roi, GstVideoFrame *frame, gchar *current_stream_id)
 {
-    gint cv2_format;
-    guint matrix_width;
-
-    switch (frame->info.finfo->format)
-    {
-    case GST_VIDEO_FORMAT_YUY2:
-        cv2_format = CV_8UC4;
-        matrix_width = (guint)GST_VIDEO_FRAME_WIDTH(frame) / 2;
-        break;
-    case GST_VIDEO_FORMAT_RGB:
-    default:
-        cv2_format = CV_8UC3;
-        matrix_width = (guint)GST_VIDEO_FRAME_WIDTH(frame);
-        break;
-    }
-
-    auto image_planes = cv::Mat(GST_VIDEO_FRAME_HEIGHT(frame), matrix_width, cv2_format,
-                                GST_VIDEO_FRAME_PLANE_DATA(frame, 0), GST_VIDEO_FRAME_PLANE_STRIDE(frame, 0));
-
+    auto image_planes = get_mat_from_gst_frame(frame);
     ocr_sink(roi, image_planes, std::string(current_stream_id));
 
     image_planes.release();

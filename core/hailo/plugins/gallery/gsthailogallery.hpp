@@ -21,8 +21,11 @@ struct _GstHailoGallery
 {
     GstBaseTransform base_hailogallery;
     gboolean debug;
+    gboolean load_gallery;
+    gboolean save_gallery;
     gint class_id;
     Gallery gallery;
+    gchar *local_gallery_file_path;
 };
 
 struct _GstHailoGalleryClass

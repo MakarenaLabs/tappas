@@ -11,6 +11,9 @@
 #include "common/math.hpp"
 #include "ocr_postprocess.hpp"
 
+#define MIN_SCORE_THRESHOLD (0.90) // Min score threshold
+#define MIN_CHARS (6)              // Min number of characters
+
 const char *OUTPUT_LAYER_NAME = "lprnet/conv31";
 /**
  * @brief recognize the characters that are in the license plate
@@ -69,7 +72,8 @@ void OCR_postprocess(HailoROIPtr roi)
 
     float conf_mean = std::accumulate(no_repeat_label_conf.begin(), no_repeat_label_conf.end(), 0.0) / no_repeat_label_conf.size();
 
-    hailo_common::add_classification(roi, std::string("ocr"), no_repeat_label.str(), conf_mean);
+    if (conf_mean >= MIN_SCORE_THRESHOLD && no_repeat_label.str().size() > MIN_CHARS)
+        hailo_common::add_classification(roi, std::string("ocr"), no_repeat_label.str(), conf_mean);
 }
 
 void filter(HailoROIPtr roi)

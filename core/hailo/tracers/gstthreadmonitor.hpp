@@ -17,9 +17,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
-#ifndef __GST_THREAD_MONITOR_TRACER_HPP__
-#define __GST_THREAD_MONITOR_TRACER_HPP__
+#pragma once
 
 #include "gstperiodictracer.hpp"
 
@@ -29,4 +27,3 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (GstThreadMonitorTracer, gst_thread_monitor_tracer, GST, THREAD_MONITOR_TRACER, GstPeriodicTracer)
 
 G_END_DECLS
-#endif /* __GST_THREAD_MONITOR_TRACER_HPP__ */

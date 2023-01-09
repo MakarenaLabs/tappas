@@ -11,5 +11,6 @@
 __BEGIN_DECLS
 std::vector<HailoROIPtr> person_attributes(cv::Mat mat, HailoROIPtr roi);
 std::vector<HailoROIPtr> face_attributes(cv::Mat image, HailoROIPtr roi);
+std::vector<HailoROIPtr> face_recognition(cv::Mat image, HailoROIPtr roi);
 
 __END_DECLS

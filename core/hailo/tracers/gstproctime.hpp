@@ -17,9 +17,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
-#ifndef __GST_PROC_TIME_TRACER_HPP__
-#define __GST_PROC_TIME_TRACER_HPP__
+#pragma once
 
 #include "gstsharktracer.hpp"
 
@@ -29,5 +27,3 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (GstProcTimeTracer, gst_proc_time_tracer, GST, PROC_TIME_TRACER, GstSharkTracer)
 
 G_END_DECLS
-
-#endif /* __GST_PROC_TIME_TRACER_HPP__ */

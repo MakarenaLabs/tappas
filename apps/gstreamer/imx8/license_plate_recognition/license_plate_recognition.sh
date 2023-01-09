@@ -106,7 +106,7 @@ internal_offset=true
 function create_lp_detection_pipeline() {
     pipeline_1="queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
                 hailocropper so-path=$LICENSE_PLATE_CROP_SO function-name=$LICENSE_PLATE_DETECTION_CROP_FUNC internal-offset=$internal_offset drop-uncropped-buffers=true name=cropper1 \
-                hailoaggregator name=agg1 flatten-detections=false \
+                hailoaggregator name=agg1 \
                 cropper1. ! \
                     queue leaky=no max-size-buffers=50 max-size-bytes=0 max-size-time=0 ! \
                 agg1. \
@@ -119,7 +119,7 @@ function create_lp_detection_pipeline() {
                 agg1. \
                 agg1. ! queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
                 hailocropper so-path=$LICENSE_PLATE_CROP_SO function-name=$LICENSE_PLATE_OCR_CROP_FUNC internal-offset=$internal_offset drop-uncropped-buffers=true name=cropper2 \
-                hailoaggregator name=agg2 flatten-detections=false \
+                hailoaggregator name=agg2 \
                 cropper2. ! \
                     queue leaky=no max-size-buffers=50 max-size-bytes=0 max-size-time=0 ! \
                 agg2. \
@@ -141,7 +141,7 @@ PIPELINE="${debug_stats_export} gst-launch-1.0 ${stats_element} \
     queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
     hailofilter so-path=$VEHICLE_DETECTION_POST_SO config-path=$car_json_config_path function-name=$VEHICLE_DETECTION_POST_FUNC qos=false ! \
     queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
-    hailotracker name=hailo_tracker keep-past-metadata=false kalman-dist-thr=.5 iou-thr=.6 keep-tracked-frames=2 keep-lost-frames=2 ! \
+    hailotracker name=hailo_tracker keep-past-metadata=true kalman-dist-thr=.5 iou-thr=.6 keep-tracked-frames=2 keep-lost-frames=2 ! \
     queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
     tee name=$tee_name \
     $tee_name. ! \

@@ -49,6 +49,7 @@ public:
     std::vector<HailoDetectionPtr> update(std::string name, std::vector<HailoDetectionPtr> &inputs);
     void add_object_to_track(std::string name, int id, HailoObjectPtr obj);
     void remove_classifications_from_track(std::string name, int track_id, std::string classifier_type);
+    void remove_matrices_from_track(std::string name, int track_id);
 
     // Setters for members accessible at element-property level
     void set_kalman_distance(std::string name, float new_distance);

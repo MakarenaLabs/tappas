@@ -17,7 +17,7 @@
 #include <map>
 #include <vector>
 #include "hailo_objects.hpp"
-#include "common/image.hpp"
+#include "common/hailomat.hpp"
 
 typedef enum
 {
@@ -27,10 +27,9 @@ typedef enum
 } overlay_status_t;
 
 __BEGIN_DECLS
-overlay_status_t draw_all(HailoMat &hmat, HailoROIPtr roi, bool show_confidence = true);
+overlay_status_t draw_all(HailoMat &hmat, HailoROIPtr roi, float landmark_point_radius, bool show_confidence = true, bool local_gallery = false, uint mask_overlay_n_threads = 0);
 void face_blur(cv::Mat &mat, HailoROIPtr roi);
 
-cv::Scalar RGB_TO_YUY2(cv::Scalar rgb);
 cv::Scalar indexToColor(size_t index);
 
 __END_DECLS

@@ -2,8 +2,7 @@
  * Copyright (c) 2021-2022 Hailo Technologies Ltd. All rights reserved.
  * Distributed under the LGPL license (https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt)
  **/
-#ifndef _HAILO_YOLOV5_OL_HPP_
-#define _HAILO_YOLOV5_OL_HPP_
+#pragma once
 #include "hailo_objects.hpp"
 #include <iostream>
 
@@ -234,5 +233,3 @@ protected:
     HailoTensorPtr _obj;
     HailoTensorPtr _cls;
 };
-
-#endif

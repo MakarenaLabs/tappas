@@ -247,6 +247,26 @@ namespace encode_json
         object_json.AddMember("HailoMatrix", entry_object, allocator);
     }
 
+    inline rapidjson::Document encode_hailo_face_recognition_result(HailoMatrixPtr matrix, const char* name)
+    {
+        // Create the JSON DOM, get it's allocator
+        rapidjson::Document document;
+        document.SetObject();
+        rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
+
+        rapidjson::Value object_array(rapidjson::kArrayType);
+        rapidjson::Value object_json( rapidjson::kObjectType );  // top level roi
+        
+        rapidjson::Value object_member(rapidjson::kObjectType);  //array member
+        encode_matrix(object_member, allocator, matrix);
+        object_array.PushBack(object_member, allocator);
+        object_json.AddMember("Name", rapidjson::Value(name, sizeof(name)), allocator);
+        object_json.AddMember("Embeddings", object_array, allocator);
+        document.AddMember("FaceRecognition", object_json, allocator);
+
+        return document;
+    }
+
     inline void encode_hailo_objects_to_json(rapidjson::Value& object_json, rapidjson::Document::AllocatorType& allocator, HailoROIPtr roi)
     {
         rapidjson::Value object_array(rapidjson::kArrayType);

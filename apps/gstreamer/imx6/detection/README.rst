@@ -5,8 +5,8 @@ Detection Pipeline
 Detection
 ---------
 
-The purpose of ``detection.sh`` is to demonstrate object detection using a camera as input.
-This is done by running a ``single-stream object classification pipeline`` on top of GStreamer using the Hailo-8 device.
+The purpose of ``detection.sh`` is to demonstrate object detection using a camera/file as input with i.MX6 hardware accelerators.
+This is done by running a ``single-stream object detection pipeline`` on top of GStreamer i.MX6 elements using the Hailo-8 device.
 
 .. raw:: html
   
@@ -18,18 +18,24 @@ Options
 
 .. code-block:: sh
 
-   ./detection.sh [--input FILL-ME]
+   ./detection.sh
 
 
-* ``--input`` is an optional flag, a path to the camera (default is /dev/video0).
+* ``--input`` is an optional flag, a path to the video displayed (default is detection.mp4).
 * ``--show-fps`` is a flag that prints the pipeline's fps to the screen.
 * ``--print-gst-launch`` is a flag that prints the ready gst-launch command without running it.
+
+Configuration
+-------------
+
+The yolo post processes parameters can be configured by a json file located in /home/root/apps/detection/resources/configs
+
 
 Supported Networks
 ------------------
 
 
-* 'mobilenet_ssd' - https://github.com/hailo-ai/hailo_model_zoo/blob/master/hailo_model_zoo/cfg/networks/ssd_mobilenet_v1.yaml
+* ``yolov5s_personface``: yolov5s pre-trained on Hailo's dataset - https://github.com/hailo-ai/hailo_model_zoo/blob/master/hailo_model_zoo/cfg/networks/yolov5s_personface.yaml
 
 Run
 ---
@@ -50,6 +56,6 @@ Run
 How does it work?
 -----------------
 
-This app is based on our `single network with resolution preservation pipeline template <../../../../docs/pipelines/single_network.rst#example-pipeline-with-resolution-preservation>`_
+This app is based on our `Single Network Pipeline template <../../../../docs/pipelines/single_network.rst>`_
 
 

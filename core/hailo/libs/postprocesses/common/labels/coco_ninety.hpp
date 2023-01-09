@@ -2,8 +2,7 @@
 * Copyright (c) 2021-2022 Hailo Technologies Ltd. All rights reserved.
 * Distributed under the LGPL license (https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt)
 **/
-#ifndef _HAILO_COCO_NINETY_HPP_
-#define _HAILO_COCO_NINETY_HPP_
+#pragma once
 #include <map>
 namespace common
 {
@@ -90,4 +89,3 @@ namespace common
         {90, "tooth brush"},
         {9, "boat"}};
 }
-#endif /* _HAILO_COCO_NINETY_HPP_ */

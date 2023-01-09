@@ -17,9 +17,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
-#ifndef __GST_THREAD_MONITOR_COMPUTE_HPP__
-#define __GST_THREAD_MONITOR_COMPUTE_HPP__
+#pragma once
 
 #include <gst/gst.h>
 
@@ -43,4 +41,3 @@ void gst_thread_monitor_compute(GstTracerRecord *tr_threadmonitor, GstThreadMoni
                                 gchar **thread_memory_usage);
 
 G_END_DECLS
-#endif //__GST_THREAD_MONITOR_COMPUTE_HPP__

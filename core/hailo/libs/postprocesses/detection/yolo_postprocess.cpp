@@ -288,30 +288,56 @@ void yolov5_no_persons(HailoROIPtr roi, void *params_void_ptr)
     hailo_common::add_detections(roi, detections);
 }
 
-void yolov5_personface(HailoROIPtr roi, void *params_void_ptr)
+void yolov5_no_faces(HailoROIPtr roi, void *params_void_ptr)
 {
     YoloParams *params = reinterpret_cast<YoloParams *>(params_void_ptr);
-    HailoBBox roi_bbox = hailo_common::create_flattened_bbox(roi->get_bbox(), roi->get_scaling_bbox());
 
     // Yolov5 Postprocess for faces
     auto post = Yolov5(roi, params);
     auto detections = post.decode();
 
-    // Fix the bboxes because resize was letterbox.
+    // yolov5_personface but no faces are added
     for (auto &det : detections)
     {
-        auto detection_bbox = det.get_bbox();
+        if (det.get_label() == "person")
+            hailo_common::add_object(roi, std::make_shared<HailoDetection>(det));
+    }
+}
+
+void yolov5_personface_letterbox(HailoROIPtr roi, void *params_void_ptr)
+{
+    YoloParams *params = reinterpret_cast<YoloParams *>(params_void_ptr);
+    HailoBBox roi_bbox = hailo_common::create_flattened_bbox(roi->get_bbox(), roi->get_scaling_bbox());
+    
+    // Yolov5 Postprocess for faces
+    auto post = Yolov5(roi, params);
+    auto detections = post.decode();
+    for ( auto &detection : detections )
+    {
+        auto detection_bbox = detection.get_bbox();
         auto xmin = (detection_bbox.xmin() * roi_bbox.width()) + roi_bbox.xmin();
         auto ymin = (detection_bbox.ymin() * roi_bbox.height()) + roi_bbox.ymin();
         auto xmax = (detection_bbox.xmax() * roi_bbox.width()) + roi_bbox.xmin();
         auto ymax = (detection_bbox.ymax() * roi_bbox.height()) + roi_bbox.ymin();
 
         HailoBBox new_bbox(xmin, ymin, xmax - xmin, ymax - ymin);
-        det.set_bbox(new_bbox);
+        detection.set_bbox(new_bbox);
     }
 
     // Clear the scaling bbox of main roi because all detections are fixed.
     roi->clear_scaling_bbox();
+
+    // Add detections to main roi.
+    hailo_common::add_detections(roi, detections);
+}
+
+void yolov5_personface(HailoROIPtr roi, void *params_void_ptr)
+{
+    YoloParams *params = reinterpret_cast<YoloParams *>(params_void_ptr);
+
+    // Yolov5 Postprocess for faces
+    auto post = Yolov5(roi, params);
+    auto detections = post.decode();
 
     // Add detections to main roi.
     hailo_common::add_detections(roi, detections);

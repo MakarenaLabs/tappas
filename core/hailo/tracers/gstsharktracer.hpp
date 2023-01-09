@@ -17,9 +17,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
-#ifndef __GST_SHARK_TRACER_HPP__
-#define __GST_SHARK_TRACER_HPP__
+#pragma once
 
 #include <gst/gst.h>
 #include <gst/gsttracer.h>
@@ -41,5 +39,3 @@ void gst_shark_tracer_register_hook (GstSharkTracer *self, const gchar *detail,
     GCallback func);
 
 G_END_DECLS
-
-#endif /* __GST_SHARK_TRACER_HPP__ */

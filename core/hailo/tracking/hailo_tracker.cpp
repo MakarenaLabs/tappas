@@ -72,6 +72,23 @@ void HailoTracker::add_object_to_track(std::string name, int track_id, HailoObje
     }
 }
 
+void HailoTracker::remove_matrices_from_track(std::string name, int track_id)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    STrack *tracked_detection = priv->trackers[name].get_detection_with_id(track_id);
+    if (tracked_detection)
+    {
+        std::vector<HailoObjectPtr> matrices;
+        auto detection = tracked_detection->get_hailo_detection();
+        for (auto obj : detection->get_objects_typed(HAILO_MATRIX))
+        {
+            HailoMatrixPtr matrix = std::dynamic_pointer_cast<HailoMatrix>(obj);
+            matrices.push_back(matrix);
+        }
+        hailo_common::remove_objects(detection, matrices);
+    }
+}
+
 void HailoTracker::remove_classifications_from_track(std::string name, int track_id, std::string classifier_type)
 {
     std::lock_guard<std::mutex> lock(mutex_);

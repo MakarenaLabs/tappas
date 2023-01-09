@@ -13,6 +13,7 @@
 
 #define RESNET_V1_18_FACE_OUTPUT_LAYER_NAME "face_attr_resnet_v1_18/fc3"
 #define RESNET_V1_18_FACE_NUMBER_OF_CLASSES 40
+#define RESNET_V1_18_FACE_THRESHOLD 0.3f
 
 std::string tracker_name="hailo_face_tracker";
 
@@ -32,11 +33,11 @@ xt::xarray<float> get_face_attributes(HailoROIPtr roi, std::string output_layer_
     return attr_predictions;
 }
 
-void add_attribute_prediction_to_roi(std::vector<HailoUniqueIDPtr> unique_ids, std::string jde_tracker_name, std::string label, float confidence, int index)
+void add_attribute_prediction_to_roi(HailoROIPtr roi, std::vector<HailoUniqueIDPtr> unique_ids, std::string jde_tracker_name, std::string label, float confidence, int index)
 {
     HailoClassificationPtr classification;
 
-    if (confidence > 0.5f)
+    if (confidence > RESNET_V1_18_FACE_THRESHOLD)
     {
         if (label != "No_Beard")
         {
@@ -66,10 +67,17 @@ void add_attribute_prediction_to_roi(std::vector<HailoUniqueIDPtr> unique_ids, s
 
     if (classification != nullptr)
     {
-        // Update the tracker with the results
-        HailoTracker::GetInstance().add_object_to_track(jde_tracker_name,
-                                                        unique_ids[0]->get_id(),
-                                                        classification);
+        if(unique_ids.empty())
+        {
+            hailo_common::add_object(roi, classification);
+        }
+        else
+        {
+            // Update the tracker with the results
+            HailoTracker::GetInstance().add_object_to_track(jde_tracker_name,
+                                                            unique_ids[0]->get_id(),
+                                                            classification);
+        }
     }
 }
 
@@ -84,12 +92,12 @@ void face_attributes_postprocess(HailoROIPtr roi, GstVideoFrame *frame, gchar *c
 
     std::string jde_tracker_name = tracker_name + "_" + current_stream_id;
     std::vector<HailoUniqueIDPtr> unique_ids = hailo_common::get_hailo_unique_id(roi);
-    if (unique_ids.empty())
-        return;
-
-    HailoTracker::GetInstance().remove_classifications_from_track(jde_tracker_name,
-                                                                  unique_ids[0]->get_id(),
-                                                                  std::string("face_attributes"));
+    if (!unique_ids.empty())
+    {
+        HailoTracker::GetInstance().remove_classifications_from_track(jde_tracker_name,
+                                                                    unique_ids[0]->get_id(),
+                                                                    std::string("face_attributes"));
+    }
 
     std::string label = "";
     // Iterate over the attribute predictions
@@ -102,7 +110,7 @@ void face_attributes_postprocess(HailoROIPtr roi, GstVideoFrame *frame, gchar *c
 
         // Get the confidence
         float confidence = (attr_predictions(0, i)*0.99f);
-        add_attribute_prediction_to_roi(unique_ids, jde_tracker_name, label, confidence, i);
+        add_attribute_prediction_to_roi(roi, unique_ids, jde_tracker_name, label, confidence, i);
     }
 }
 

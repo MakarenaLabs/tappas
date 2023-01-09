@@ -2,8 +2,7 @@
 * Copyright (c) 2021-2022 Hailo Technologies Ltd. All rights reserved.
 * Distributed under the LGPL license (https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt)
 **/
-#ifndef _HAILO_YOLACT_TWENTY_HPP_
-#define _HAILO_YOLACT_TWENTY_HPP_
+#pragma once
 #include <map>
 namespace common
 {
@@ -29,4 +28,3 @@ namespace common
         {18, "cellphone"},
         {19, "book"}};
 }
-#endif /* _HAILO_YOLACT_TWENTY_HPP_ */

@@ -82,7 +82,7 @@ PIPELINE="gst-launch-1.0 \
     queue max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
     $opengl_convert ! \
     queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
-    hailonet hef-path=$hef_path is-active=true ! \
+    hailonet hef-path=$hef_path ! \
     queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
     hailofilter so-path=$postprocess_so qos=false ! \
     queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \

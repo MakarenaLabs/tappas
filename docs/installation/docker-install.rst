@@ -25,7 +25,7 @@ The section below would help you with the installation of Docker.
 
 
 .. note::
-     
+
     Consider reading `Running out of disk space`_ if your system is space limited
 
 .. _Running TAPPAS container from pre-built Docker image:
@@ -36,7 +36,13 @@ Running TAPPAS container from pre-built Docker image
 Preparations
 ^^^^^^^^^^^^
 
-`HailoRT PCIe driver <https://github.com/hailo-ai/hailort-drivers>`_ is required - install instructions are provided in HailoRT documentations. make sure that the driver is installed correctly by: `Verify Hailo installation <./verify_hailoRT.rst>`_.
+`HailoRT PCIe driver <https://github.com/hailo-ai/hailort-drivers>`_ is required - install instructions
+are provided in HailoRT documentation. Make sure that the driver is installed correctly
+by: `Verify Hailo installation <./verify_hailoRT.rst>`_.
+
+.. note::
+
+    The TAPPAS container already contains the required HailoRT version pre-installed.
 
 Download from Hailo developer zone ``tappas_VERSION_ARCH_docker.zip`` and unzip the file, it should contain the following files:
 

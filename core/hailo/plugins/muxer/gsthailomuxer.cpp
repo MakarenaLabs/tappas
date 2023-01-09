@@ -1,7 +1,7 @@
 /**
-* Copyright (c) 2021-2022 Hailo Technologies Ltd. All rights reserved.
-* Distributed under the LGPL license (https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt)
-**/
+ * Copyright (c) 2021-2022 Hailo Technologies Ltd. All rights reserved.
+ * Distributed under the LGPL license (https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt)
+ **/
 /**
  * SECTION:element-hailomuxer
  * @title: hailomuxer
@@ -51,14 +51,14 @@ G_DEFINE_TYPE_WITH_CODE(GstHailoMuxer, gst_hailomuxer, GST_TYPE_ELEMENT, _do_ini
 
 static void
 gst_hailomuxer_get_property(GObject *object, guint prop_id,
-                                 GValue *value, GParamSpec *pspec);
+                            GValue *value, GParamSpec *pspec);
 static void
 gst_hailomuxer_set_property(GObject *object, guint prop_id,
-                                 const GValue *value, GParamSpec *pspec);
+                            const GValue *value, GParamSpec *pspec);
 
 static gboolean gst_hailomuxer_sink_event(GstPad *pad,
-                                               GstObject *parent,
-                                               GstEvent *event);
+                                          GstObject *parent,
+                                          GstEvent *event);
 static GstFlowReturn gst_hailomuxer_chain_main(GstPad *pad, GstObject *parent, GstBuffer *buf);
 static GstFlowReturn gst_hailomuxer_chain_sub(GstPad *pad, GstObject *parent, GstBuffer *buf);
 static GstFlowReturn gst_hailomuxer_sync_and_drop(GstBuffer *buf, GstHailoMuxer *hailomuxer, bool main_stream);
@@ -89,8 +89,8 @@ gst_hailomuxer_class_init(GstHailoMuxerClass *klass)
     gstelement_class->change_state = gst_hailomuxer_change_state;
 
     g_object_class_install_property(gobject_class, PROP_SYNC_COUNTERS,
-                        g_param_spec_boolean("sync-counters", "sync-counters", "Sync frames by matching HailoCounterMeta (see HailoCounter element)", false,
-                                                (GParamFlags)(GST_PARAM_CONTROLLABLE | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+                                    g_param_spec_boolean("sync-counters", "sync-counters", "Sync frames by matching HailoCounterMeta (see HailoCounter element)", false,
+                                                         (GParamFlags)(GST_PARAM_CONTROLLABLE | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
 }
 
 static void
@@ -125,7 +125,7 @@ gst_hailomuxer_init(GstHailoMuxer *hailomuxer)
 
 static void
 gst_hailomuxer_set_property(GObject *object, guint prop_id,
-                                 const GValue *value, GParamSpec *pspec)
+                            const GValue *value, GParamSpec *pspec)
 {
     GstHailoMuxer *hailomuxer = GST_HAILO_MUXER_CAST(object);
 
@@ -142,7 +142,7 @@ gst_hailomuxer_set_property(GObject *object, guint prop_id,
 
 static void
 gst_hailomuxer_get_property(GObject *object, guint prop_id, GValue *value,
-                                 GParamSpec *pspec)
+                            GParamSpec *pspec)
 {
     GstHailoMuxer *hailomuxer = GST_HAILO_MUXER_CAST(object);
 
@@ -279,8 +279,7 @@ gst_hailomuxer_sync_and_drop(GstBuffer *buf, GstHailoMuxer *hailomuxer, bool mai
     // syncing main stream: If the sub stream is ahead of the main stream, then drop this frame
     // or
     // syncing sub stream: If the main stream is ahead of the sub stream, then drop this frame
-    if ((main_stream && (hailomuxer->current_counter_main < hailomuxer->current_counter_sub))
-     || (!main_stream && (hailomuxer->current_counter_main > hailomuxer->current_counter_sub)))
+    if ((main_stream && (hailomuxer->current_counter_main < hailomuxer->current_counter_sub)) || (!main_stream && (hailomuxer->current_counter_main > hailomuxer->current_counter_sub)))
     {
         gst_buffer_remove_hailo_meta(buf);
         gst_buffer_unref(buf);
@@ -297,7 +296,6 @@ gst_hailomuxer_wait_for_main(GstHailoMuxer *hailomuxer, std::unique_lock<std::mu
     if (hailomuxer->current_counter_main < hailomuxer->current_counter_sub)
         hailomuxer->cv_sub.wait(lock);
 }
-
 
 static void
 gst_hailomuxer_wait_for_sub(GstBuffer *buf, GstHailoMuxer *hailomuxer, std::unique_lock<std::mutex> &lock)
@@ -340,15 +338,16 @@ gst_hailomuxer_chain_sub(GstPad *pad, GstObject *parent, GstBuffer *buf)
         if (status == GST_FLOW_OK)
             return GST_FLOW_OK;
 
-        gst_hailomuxer_wait_for_main(hailomuxer, lock);  // Wait for the main stream if needed
-    } 
-    else if (hailomuxer->mainframe == NULL || hailomuxer->mainframe->offset < buf->offset)
+        gst_hailomuxer_wait_for_main(hailomuxer, lock); // Wait for the main stream if needed
+    }
+    else if (hailomuxer->mainframe == NULL)
     {
         // Wait until main frame is not null & the offset of main frame is not smaller.
         hailomuxer->cv_sub.wait(lock);
     }
 
     gst_hailomuxer_merge_rois(buf, hailomuxer);
+    hailomuxer->mainframe = NULL;
     gst_buffer_remove_hailo_meta(buf);
     gst_buffer_unref(buf);
     return GST_FLOW_OK;
@@ -377,7 +376,7 @@ gst_hailomuxer_chain_main(GstPad *pad, GstObject *parent, GstBuffer *buf)
     gst_pad_sticky_events_foreach(hailomuxer->sinkpad_main, forward_events, hailomuxer->srcpad);
 
     // Remove the counter meta from the main frame.
-    if (hailomuxer->sync_counters && (! gst_buffer_remove_hailo_counter_meta(buf)))
+    if (hailomuxer->sync_counters && (!gst_buffer_remove_hailo_counter_meta(buf)))
         GST_ERROR_OBJECT(hailomuxer, "Failed to remove counter meta from main frame");
 
     // Push main buffer into the src pad.
@@ -389,7 +388,7 @@ gst_hailomuxer_chain_main(GstPad *pad, GstObject *parent, GstBuffer *buf)
  * Functionality to perform for each incoming sub frame.
  * Called from the chain_sub method before the releasing the mutex and the buffers.
  * Add objects from sub_buffer_roi sub to main_buffer_roi.
- * 
+ *
  * @param[in] hailomuxer   GstHailoMuxer.
  * @param[in] sub_buffer_roi    HailoROIPtr, the ROI of the subframe taken from the metadata of the buffer.
  * @return void.

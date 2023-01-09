@@ -10,6 +10,9 @@
 #define MIN_RATIO (1.7f)
 #define MAX_RATIO (4.5f)
 #define MIN_HEIGHT (0.3f)
+#define MAX_HEIGHT (0.8f)
+#define MIN_X (0.05f)
+#define MAX_X (0.95f)
 #define TRACK_DELAY (5)
 #define MIN_QUALITY (400)
 #define RE_ID_NETWORK_SIZE (cv::Size(128, 256))
@@ -80,14 +83,6 @@ HailoUniqueIDPtr get_tracking_id(HailoDetectionPtr detection)
     return nullptr;
 }
 
-void remove_previous_matrices(HailoROIPtr roi)
-{
-    for (auto matrix : roi->get_objects_typed(HAILO_MATRIX))
-    {
-        roi->remove_object(matrix);
-    }
-}
-
 /**
  * @brief Returns a vector of HailoROIPtr to crop and resize.
  *
@@ -105,7 +100,9 @@ std::vector<HailoROIPtr> create_crops(cv::Mat image, HailoROIPtr roi)
         // Modify only detections with "person" label.
         if (std::string(PERSON_LABEL) == detection->get_label())
         {
-            remove_previous_matrices(roi);
+            // Remove previous matrices
+            roi->remove_objects_typed(HAILO_MATRIX);
+
             int tracking_id = get_tracking_id(detection)->get_id();
 
             auto counter = track_counter.find(tracking_id);
@@ -122,27 +119,13 @@ std::vector<HailoROIPtr> create_crops(cv::Mat image, HailoROIPtr roi)
                 auto bbox = detection->get_bbox();
                 float quality = quality_estimation(image, bbox);
                 float ratio = (bbox.height() * image.rows) / (bbox.width() * image.cols);
-                if (ratio > MIN_RATIO && ratio < MAX_RATIO && bbox.height() > MIN_HEIGHT && quality > MIN_QUALITY)
+                if (ratio > MIN_RATIO && ratio < MAX_RATIO && 
+                    bbox.height() > MIN_HEIGHT && bbox.height() < MAX_HEIGHT &&
+                    bbox.xmin() > MIN_X && bbox.xmax() < MAX_X && quality > MIN_QUALITY)
                 {
                     crop_rois.emplace_back(detection);
                 }
             }
-        }
-    }
-    return crop_rois;
-}
-
-std::vector<HailoROIPtr> create_crops_no_checks(cv::Mat image, HailoROIPtr roi)
-{
-    std::vector<HailoROIPtr> crop_rois;
-    // Get all detections.
-    std::vector<HailoDetectionPtr> detections_ptrs = hailo_common::get_hailo_detections(roi);
-    for (HailoDetectionPtr &detection : detections_ptrs)
-    {
-        // Modify only detections with "person" label.
-        if (std::string(PERSON_LABEL) == detection->get_label())
-        {
-            crop_rois.emplace_back(detection);
         }
     }
     return crop_rois;

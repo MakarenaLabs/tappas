@@ -31,6 +31,7 @@ enum
     PROP_PROCESS_LIB,
     PROP_PROCESS_FUNC_NAME,
     PROP_RESIZE_METHOD,
+    PROP_USE_LETTERBOX,
 };
 
 #define GST_TYPE_HAILOCROPPER_RESIZE_METHOD (gst_hailocropper_resize_method_get_type())
@@ -39,11 +40,10 @@ gst_hailocropper_resize_method_get_type(void)
 {
     static GType hailocropper_resize_method_type = 0;
     static const GEnumValue hailocropper_resize_methods[] = {
-        {GST_HAILO_CROPPER_NEAREST_NEIGHBOR, "Nearest neighbour interpolation", "nearest-neighbour"},
-        {GST_HAILO_CROPPER_BILINEAR, "Bilinear interpolation", "bilinear"},
-        {GST_HAILO_CROPPER_LETTERBOX, "Aspect ratio preserving resize with padding (border)", "letterbox"},
-        {GST_HAILO_CROPPER_BICUBIC, "Bicubic interpolation", "bicubic"},
-        {GST_HAILO_CROPPER_INTER_AREA, "Resampling using pixel area relation", "inter-area"},
+        {cv::INTER_NEAREST, "Nearest neighbour interpolation", "nearest-neighbour"},
+        {cv::INTER_LINEAR, "Bilinear interpolation", "bilinear"},
+        {cv::INTER_CUBIC, "Bicubic interpolation", "bicubic"},
+        {cv::INTER_AREA, "Resampling using pixel area relation", "inter-area"},
         {0, NULL, NULL},
     };
     if (!hailocropper_resize_method_type)
@@ -95,9 +95,13 @@ gst_hailocropper_class_init(GstHailoCropperClass *klass)
                                                         "function-name", "",
                                                         (GParamFlags)(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | GST_PARAM_MUTABLE_READY)));
     g_object_class_install_property(gobject_class, PROP_RESIZE_METHOD,
-                                    g_param_spec_enum("method", "resize method", "Resize method for each crop",
-                                                      GST_TYPE_HAILOCROPPER_RESIZE_METHOD, (gint)GST_HAILO_CROPPER_BILINEAR,
+                                    g_param_spec_enum("resize-method", "resize method", "Resize method for each crop",
+                                                      GST_TYPE_HAILOCROPPER_RESIZE_METHOD, (gint)cv::INTER_LINEAR,
                                                       (GParamFlags)(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+    g_object_class_install_property(gobject_class, PROP_USE_LETTERBOX,
+                                    g_param_spec_boolean("use-letterbox", "Use letterbox",
+                                                         "If true, then this element will resize with  aspect ratio preserving. Default false.", false,
+                                                         (GParamFlags)(GST_PARAM_CONTROLLABLE | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
     gstelement_class->change_state = GST_DEBUG_FUNCPTR(gst_hailocropper_change_state);
     basecropper_class->prepare_crops = gst_hailocropper_prepare_crops;
     basecropper_class->resize = gst_hailocropper_resize_by_method;
@@ -107,7 +111,7 @@ static void
 gst_hailocropper_init(GstHailoCropper *hailocropper)
 {
     GST_DEBUG_OBJECT(hailocropper, "init");
-    hailocropper->method = GST_HAILO_CROPPER_BILINEAR;
+    hailocropper->method = cv::INTER_LINEAR;
 }
 
 static void
@@ -126,8 +130,11 @@ gst_hailocropper_set_property(GObject *object, guint prop_id,
         break;
     case PROP_RESIZE_METHOD:
         GST_OBJECT_LOCK(hailocropper);
-        hailocropper->method = (GstHailoCropperResizeMethod)g_value_get_enum(value);
+        hailocropper->method = (cv::InterpolationFlags)g_value_get_enum(value);
         GST_OBJECT_UNLOCK(hailocropper);
+        break;
+    case PROP_USE_LETTERBOX:
+        hailocropper->use_letterbox = g_value_get_boolean(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -154,6 +161,9 @@ gst_hailocropper_get_property(GObject *object, guint prop_id,
         g_value_set_enum(value, (gint)hailocropper->method);
         GST_OBJECT_UNLOCK(hailocropper);
         break;
+    case PROP_USE_LETTERBOX:
+        g_value_set_boolean(value, hailocropper->use_letterbox);
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
         break;
@@ -163,27 +173,25 @@ gst_hailocropper_get_property(GObject *object, guint prop_id,
 void gst_hailocropper_resize_by_method(GstHailoBaseCropper *basecropper, cv::Mat &cropped_image, cv::Mat &resized_image, HailoROIPtr roi, GstVideoFormat image_format)
 {
     GstHailoCropper *hailocropper = GST_HAILO_CROPPER(basecropper);
-    switch (hailocropper->method)
+    if (hailocropper->use_letterbox)
     {
-    case GST_HAILO_CROPPER_NEAREST_NEIGHBOR:
-        resize_nearest_neighbor(basecropper, cropped_image, resized_image, roi, image_format);
-        break;
-    case GST_HAILO_CROPPER_BILINEAR:
-        resize_bilinear(basecropper, cropped_image, resized_image, roi, image_format);
-        break;
-    case GST_HAILO_CROPPER_BICUBIC:
-        resize_bicubic(basecropper, cropped_image, resized_image, roi, image_format);
-        break;
-     case GST_HAILO_CROPPER_INTER_AREA:
-        resize_inter_area(basecropper, cropped_image, resized_image, roi, image_format);
-        break;
-    case GST_HAILO_CROPPER_LETTERBOX:
-        resize_letterbox(basecropper, cropped_image, resized_image, roi, image_format);
-        break;
-    default:
-        GST_ERROR_OBJECT(hailocropper, "Resize method type %d is not supported", hailocropper->method);
-        break;
+        switch (image_format)
+        {
+        case GST_VIDEO_FORMAT_RGB:
+        {
+            resize_letterbox(hailocropper->method, cropped_image, resized_image, roi);
+            break;
+        }
+        default:
+            std::cerr << "Letterbox resizing is supported only for RGB at this moment." << std::endl;
+            break;
+        }
     }
+    else
+    {
+        resize_normal(hailocropper->method, cropped_image, resized_image, image_format);
+    }
+
 }
 
 /**

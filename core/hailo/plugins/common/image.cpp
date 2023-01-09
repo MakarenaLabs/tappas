@@ -5,6 +5,7 @@
 
 #include "common/image.hpp"
 
+
 size_t get_size(GstCaps *caps)
 {
     size_t size;
@@ -15,25 +16,38 @@ size_t get_size(GstCaps *caps)
     return size;
 }
 
-cv::Mat get_mat(GstVideoInfo *info, GstMapInfo *map)
+cv::Mat get_mat_from_video_info(GstVideoInfo *info, char *data)
 {
     cv::Mat img;
     switch (info->finfo->format)
     {
     case GST_VIDEO_FORMAT_YUY2:
-        img = cv::Mat(info->height, info->width / 2, CV_8UC4, (char *)map->data, info->stride[0]);
+        img = cv::Mat(info->height, info->width / 2, CV_8UC4, data, info->stride[0]);
         break;
     case GST_VIDEO_FORMAT_RGB:
-        img = cv::Mat(info->height, info->width, CV_8UC3, (char *)map->data, info->stride[0]);
+        img = cv::Mat(info->height, info->width, CV_8UC3, data, info->stride[0]);
         break;
     case GST_VIDEO_FORMAT_RGBA:
-        img = cv::Mat(info->height, info->width, CV_8UC4, (char *)map->data, info->stride[0]);
+        img = cv::Mat(info->height, info->width, CV_8UC4, data, info->stride[0]);
+        break;
+    case GST_VIDEO_FORMAT_NV12:
+        img = cv::Mat(info->height  * 3/2, info->width, CV_8UC1, data, info->stride[0]);
         break;
     default:
         break;
     }
 
     return img;
+}
+
+cv::Mat get_mat(GstVideoInfo *info, GstMapInfo *map)
+{
+    return get_mat_from_video_info(info, (char *)map->data);
+}
+
+cv::Mat get_mat_from_gst_frame(GstVideoFrame *frame)
+{
+    return get_mat_from_video_info(&frame->info, (char *)GST_VIDEO_FRAME_PLANE_DATA(frame, 0));
 }
 
 void resize_yuy2(cv::Mat &cropped_image, cv::Mat &resized_image, int interpolation)
@@ -67,6 +81,23 @@ void resize_yuy2(cv::Mat &cropped_image, cv::Mat &resized_image, int interpolati
     resized_y_channels.release();
     merged_y_channels_flat.release();
     resized_y_channels_2_split.release();
+}
+
+void resize_nv12(cv::Mat &cropped_image, cv::Mat &resized_image, int interpolation)
+{
+    // Split the nv12 mat into Y and UV mats
+    uint width = cropped_image.cols;
+    uint height = cropped_image.rows;
+    cv::Mat y_mat = cv::Mat(height * 2 / 3, width, CV_8UC1, (char *)cropped_image.data, width);
+    cv::Mat uv_mat = cv::Mat(height / 3, width / 2, CV_8UC2, (char *)cropped_image.data + ((height*2/3)*width), width);
+
+    // Resize the U and V channels
+    uint resize_width = resized_image.cols;
+    uint resize_height = resized_image.rows;
+    cv::Mat resized_y_channel = cv::Mat(resize_height * 2 / 3, resize_width, CV_8UC1, (char *)resized_image.data, resize_width);
+    cv::Mat resized_uv_channels = cv::Mat(resize_height / 3, resize_width / 2, CV_8UC2, (char *)resized_image.data + ((resize_height*2/3)*resize_width), resize_width);
+    cv::resize(y_mat, resized_y_channel, cv::Size(resize_width, resize_height * 2 / 3), 0, 0, interpolation);
+    cv::resize(uv_mat, resized_uv_channels, cv::Size(resize_width / 2, resize_height / 3), 0, 0, interpolation);
 }
 
 std::shared_ptr<HailoMat> get_mat_by_format(GstVideoInfo *info, GstMapInfo *map, int line_thickness, int font_thickness)
@@ -106,7 +137,15 @@ std::shared_ptr<HailoMat> get_mat_by_format(GstVideoInfo *info, GstMapInfo *map,
         break;
     }
     case GST_VIDEO_FORMAT_NV12:
+    {
+        hmat = std::make_shared<HailoNV12Mat>(map->data,
+                                              GST_VIDEO_INFO_HEIGHT(info),
+                                              GST_VIDEO_INFO_WIDTH(info),
+                                              GST_VIDEO_INFO_PLANE_STRIDE(info, 0),
+                                              line_thickness,
+                                              font_thickness);
         break;
+    }
 
     default:
         break;

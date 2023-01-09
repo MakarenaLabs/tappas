@@ -14,13 +14,12 @@ The layers are stored in `Meta-Hailo Github <https://github.com/hailo-ai/meta-ha
 
 * Zeus (kernel 5.4.24)
 * Dunfell (kernel 5.4.85)
-* Hardknott (kernel  5.10.72)
 * Honister (kernel  5.14)
 * Kirkstone (kernel 5.15)
 
-.. note:: Zeus will not be supported by TAPPAS in future versions.
+.. warning:: Kirkstone branch does not support i.MX6 devices.
 
-.. note:: Hardknott will not be supported by TAPPAS from version 3.23.0 (2023-01 suite).
+.. note:: Zeus will not be supported by TAPPAS in future versions.
 
 Setup
 -----

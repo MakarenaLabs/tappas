@@ -75,10 +75,6 @@ void load_tuple_to_hailo_roi(py::tuple &t, HailoROI &roi)
     }
 }
 
-#ifndef __MODULE_GEN_MACRO
-#define __MODULE_GEN_MACRO PYBIND11_MODULE
-#endif
-
 class __HailoObjectGlue : public HailoObject, public std::enable_shared_from_this<__HailoObjectGlue>
 {
 public:
@@ -238,20 +234,34 @@ HailoTensor tensor_init(pybind11::array_t<uint8_t> data, const hailo_vstream_inf
     return HailoTensor(static_cast<uint8_t *>(data.request().ptr), vstream_info);
 }
 
-HailoTensor tensor_init_full(pybind11::array_t<uint8_t> data, std::string name, uint height, uint width, uint features, float qp_zp, float qp_scale)
+HailoTensor tensor_init16(pybind11::array_t<uint16_t> data, const hailo_vstream_info_t &vstream_info)
 {
+    return HailoTensor(static_cast<uint8_t *>(data.request().ptr), vstream_info);
+}
+
+HailoTensor tensor_init_full(pybind11::object data, std::string name, uint height, uint width, uint features, float qp_zp, float qp_scale, int type)
+{
+
     hailo_vstream_info_t info;
     info.quant_info.qp_zp = qp_zp;
     info.quant_info.qp_scale = qp_scale;
     info.shape.height = height;
     info.shape.width = width;
     info.shape.features = features;
+    info.format.type = hailo_format_type_t(type);
     strcpy(info.name, name.c_str());
+
+    if (type == HAILO_FORMAT_TYPE_UINT16)
+    {
+        pybind11::array_t<uint16_t> new_data(data);
+        return tensor_init16(new_data, info);
+    }
+
     pybind11::array_t<uint8_t> new_data(data);
     return tensor_init(new_data, info);
 }
 
-__MODULE_GEN_MACRO(hailo, m)
+PYBIND11_MODULE(hailo, m)
 {
     m.doc() = "HAILO postprocessing python extensions library";
 
@@ -500,8 +510,9 @@ __MODULE_GEN_MACRO(hailo, m)
             .def(py::init<std::string, std::vector<HailoPoint>, float>(), py::arg("type"), py::arg("points"), py::arg("threshold"))
             .def(py::init<std::string, std::vector<HailoPoint>, float, std::vector<std::pair<int, int>>>(), py::arg("type"), py::arg("points"), py::arg("threshold"), py::arg("pairs"))
             .def("get_type", &HailoLandmarks::get_type, "Get type")
-            .def("add_point", &HailoLandmarks::add_point, "Add point", "point"_a)
+            .def("add_point", &HailoLandmarks::add_point, "Add point", "point")
             .def("get_points", &HailoLandmarks::get_points, "Get points")
+            .def("set_points", &HailoLandmarks::set_points, "Set points")
             .def("get_threshold", &HailoLandmarks::get_threshold, "Get threshold")
             .def("get_landmarks_type", &HailoLandmarks::get_landmarks_type, "Get landmarks type")
             .def("get_pairs", &HailoLandmarks::get_pairs, "Get pairs")
@@ -699,7 +710,7 @@ __MODULE_GEN_MACRO(hailo, m)
         py::class_<HailoTensor, std::shared_ptr<HailoTensor>>(m, "HailoTensor",
                                                               py::buffer_protocol())
             .def(py::init(&tensor_init_full), py::arg("data"), py::arg("name"), py::arg("height"), py::arg("width"), py::arg("features"),
-                 py::arg("qp_zp"), py::arg("qp_scale"))
+                 py::arg("qp_zp"), py::arg("qp_scale"), py::arg("type"))
             .def_buffer([](HailoTensor &obj) -> py::buffer_info
                         { return py::buffer_info(obj.data(), sizeof(uint8_t),
                                                  py::format_descriptor<uint8_t>::format(), 3,
@@ -723,6 +734,7 @@ __MODULE_GEN_MACRO(hailo, m)
                  { return "<hailo.HailoTensor"s + "(" +
                           std::to_string(reinterpret_cast<unsigned long>(&obj)) + ")" + ">"; });
     }
+
     m.def("access_HailoMainObject_from_desc", &access_HailoMainObject_from_desc,
           "Access HailoMainObject from low-level py descriptor");
     m.def("access_HailoROI_from_desc", &access_HailoROI_from_desc,

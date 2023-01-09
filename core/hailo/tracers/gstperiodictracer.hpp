@@ -17,9 +17,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
-#ifndef __GST_PERIODIC_TRACER_HPP__
-#define __GST_PERIODIC_TRACER_HPP__
+#pragma once
 
 #include "gstsharktracer.hpp"
 
@@ -38,5 +36,3 @@ struct _GstPeriodicTracerClass
 };
 
 G_END_DECLS
-
-#endif /* __GST_PERIODIC_TRACER_HPP__ */

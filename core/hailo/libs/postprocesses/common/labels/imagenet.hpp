@@ -2,8 +2,7 @@
 * Copyright (c) 2021-2022 Hailo Technologies Ltd. All rights reserved.
 * Distributed under the LGPL license (https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt)
 **/
-#ifndef _HAILO_IMAGENET_HPP_
-#define _HAILO_IMAGENET_HPP_
+#pragma once
 #include <map>
 namespace common
 {
@@ -1009,4 +1008,3 @@ namespace common
         {998, "ear, spike, capitulum"},
         {999, "toilet tissue, toilet paper}, bathroom tissue"}};
 }
-#endif /* _HAILO_IMAGENET_HPP_ */

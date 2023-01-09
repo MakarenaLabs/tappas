@@ -10,6 +10,5 @@
 
 __BEGIN_DECLS
 std::vector<HailoROIPtr> create_crops(cv::Mat mat, HailoROIPtr roi);
-std::vector<HailoROIPtr> create_crops_no_checks(cv::Mat image, HailoROIPtr roi);
 
 __END_DECLS

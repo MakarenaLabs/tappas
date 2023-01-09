@@ -11,6 +11,7 @@
 
 // Hailo includes
 #include "lpr_overlay.hpp"
+#include "image.hpp"
 #include "hailo_cv_singleton.hpp"
 
 // Open source includes
@@ -51,25 +52,7 @@ void draw_lpr(cv::Mat &mat)
 
 void filter(HailoROIPtr roi, GstVideoFrame *frame, gchar *current_stream_id)
 {
-    gint cv2_format;
-    guint matrix_width;
-
-    switch (frame->info.finfo->format)
-    {
-    case GST_VIDEO_FORMAT_YUY2:
-        cv2_format = CV_8UC4;
-        matrix_width = (guint)GST_VIDEO_FRAME_WIDTH(frame) / 2;
-        break;
-    case GST_VIDEO_FORMAT_RGB:
-    default:
-        cv2_format = CV_8UC3;
-        matrix_width = (guint)GST_VIDEO_FRAME_WIDTH(frame);
-        break;
-    }
-
-    auto image_planes = cv::Mat(GST_VIDEO_FRAME_HEIGHT(frame), matrix_width, cv2_format,
-                                GST_VIDEO_FRAME_PLANE_DATA(frame, 0), GST_VIDEO_FRAME_PLANE_STRIDE(frame, 0));
-
+    auto image_planes = get_mat_from_gst_frame(frame);
     draw_lpr(image_planes);
 
     image_planes.release();

@@ -64,6 +64,8 @@ static void gst_hailotilecropper_finalize(GObject *object);
 
 static std::vector<HailoROIPtr> gst_hailotilecropper_prepare_crops(GstHailoBaseCropper *hailocropper,
                                                                    GstBuffer *buf);
+void tiling_resize(GstHailoBaseCropper *basecropper, cv::Mat &cropped_image, cv::Mat &resized_image, HailoROIPtr roi, GstVideoFormat image_format);
+
 
 static void
 gst_hailotilecropper_class_init(GstHailoTileCropperClass *klass)
@@ -82,7 +84,7 @@ gst_hailotilecropper_class_init(GstHailoTileCropperClass *klass)
     gobject_class->finalize = gst_hailotilecropper_finalize;
 
     hailobasecropper_class->prepare_crops = gst_hailotilecropper_prepare_crops;
-    hailobasecropper_class->resize = resize_bilinear;
+    hailobasecropper_class->resize = tiling_resize;
 
     gst_element_class_set_details_simple(gstelement_class,
                                          "hailotilecropper - Tiling",
@@ -304,4 +306,9 @@ static std::vector<HailoROIPtr> gst_hailotilecropper_prepare_crops(GstHailoBaseC
             prepare_tiles(hailo_roi, crop_rois, scales_template[i][0], scales_template[i][1], hailotilecropper->overlap_x_axis, hailotilecropper->overlap_y_axis, (i + 1), (hailo_tiling_mode_t)hailotilecropper->tiling_mode);
 
     return crop_rois;
+}
+
+void tiling_resize(GstHailoBaseCropper *basecropper, cv::Mat &cropped_image, cv::Mat &resized_image, HailoROIPtr roi, GstVideoFormat image_format)
+{
+    resize_normal(cv::INTER_LINEAR, cropped_image, resized_image, image_format);
 }

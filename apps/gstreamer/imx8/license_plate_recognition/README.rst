@@ -55,34 +55,34 @@ This app uses HailoRT Model Scheduler, read more about HailoRT Model Scheduler G
 How to use Retraining to replace models
 ---------------------------------------
 
-.. note:: It is recommended to first read the :ref:`Retraining TAPPAS Models<retraining_tappas_models>` page. 
+.. note:: It is recommended to first read the `Retraining TAPPAS Models <../../../../docs/write_your_own_application/retraining-tappas-models.rst>`_ page. 
 
 You can use Retraining Dockers (available on Hailo Model Zoo), to replace the following models with ones
 that are trained on your own dataset:
 
 - ``yolov5m_vehicles``
   
-  - `Retraining docker <https://github.com/hailo-ai/hailo_model_zoo/blob/master/hailo_models/vehicle_detection/docs/TRAINING_GUIDE.md>`_
+  - `Retraining docker <https://github.com/hailo-ai/hailo_model_zoo/blob/master/hailo_models/vehicle_detection/docs/TRAINING_GUIDE.rst>`_
 
-    - **Apply the changes** written on 'on-chip YUY2->YUV layers' section on :ref:`Retraining TAPPAS Models<retraining_tappas_models>`
+    - **Apply the changes** written on 'on-chip YUY2->YUV layers' section on `Retraining TAPPAS Models <../../../../docs/write_your_own_application/retraining-tappas-models.rst>`_
   - TAPPAS changes to replace model:
 
     - Update HEF_PATH on the .sh file
     - Update ``configs/yolov5_vehicle_detection.json`` with your new post-processing parameters (NMS)
 - ``tiny_yolov4_license_plates``
   
-  - `Retraining docker <https://github.com/hailo-ai/hailo_model_zoo/blob/master/hailo_models/license_plate_detection/docs/TRAINING_GUIDE.md>`_
+  - `Retraining docker <https://github.com/hailo-ai/hailo_model_zoo/blob/master/hailo_models/license_plate_detection/docs/TRAINING_GUIDE.rst>`_
 
-    - **Apply the changes** written on 'on-chip YUY2->YUV layers' section on :ref:`Retraining TAPPAS Models<retraining_tappas_models>`
+    - **Apply the changes** written on 'on-chip YUY2->YUV layers' section on `Retraining TAPPAS Models <../../../../docs/write_your_own_application/retraining-tappas-models.rst>`_
   - TAPPAS changes to replace model:
 
     - Update HEF_PATH on the .sh file
     - Update ``configs/yolov4_licence_plate.json`` with your new post-processing parameters (NMS)
 - ``lprnet``
   
-  - `Retraining docker <https://github.com/hailo-ai/hailo_model_zoo/blob/master/hailo_models/license_plate_recognition/docs/TRAINING_GUIDE.md>`_
+  - `Retraining docker <https://github.com/hailo-ai/hailo_model_zoo/blob/master/hailo_models/license_plate_recognition/docs/TRAINING_GUIDE.rst>`_
 
-    - **Apply the changes** written on 'on-chip YUY2->YUV layers' section on :ref:`Retraining TAPPAS Models<retraining_tappas_models>`
+    - **Apply the changes** written on 'on-chip YUY2->YUV layers' section on `Retraining TAPPAS Models <../../../../docs/write_your_own_application/retraining-tappas-models.rst>`_
   - TAPPAS changes to replace model:
 
     - Update HEF_PATH on the .sh file
