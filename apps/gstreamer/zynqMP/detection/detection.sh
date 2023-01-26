@@ -70,7 +70,7 @@ PIPELINE="gst-launch-1.0 \
     hailooverlay ! \
     queue leaky=downstream max-size-buffers=5 max-size-bytes=0 max-size-time=0 ! \
     videoconvert ! \
-    ! kmssink bus-id=fd4a0000.display fullscreen-overlay=1"
+    kmssink bus-id=fd4a0000.display fullscreen-overlay=1"
 
 echo "Running $network_name"
 echo ${PIPELINE}
