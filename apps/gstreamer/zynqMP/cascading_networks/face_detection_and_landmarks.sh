@@ -10,8 +10,7 @@ function init_variables() {
 
     readonly CROPING_ALGORITHMS_DIR="$POSTPROCESS_DIR/cropping_algorithms"
     readonly DEFAULT_DETECTION_POSTPROCESS_SO="$POSTPROCESS_DIR/libface_detection_post.so"
-    #readonly DEFAULT_DETECTION_VIDEO_SOURCE="$RESOURCES_DIR/face_detection.mp4"
-    readonly DEFAULT_DETECTION_VIDEO_SOURCE="/dev/video0"
+    readonly DEFAULT_DETECTION_VIDEO_SOURCE="$RESOURCES_DIR/face_detection.mp4"
     readonly DEFAULT_HEF_PATH="$RESOURCES_DIR/joined_lightface_slim_tddfa_mobilenet_v1.hef"
     readonly DEFAULT_LANDMARKS_POSTPROCESS_SO="$POSTPROCESS_DIR/libfacial_landmarks_post.so"
     readonly DEFAULT_CROP_SO="$CROPING_ALGORITHMS_DIR/lib3ddfa.so"
@@ -91,7 +90,7 @@ if [[ $input_source =~ "/dev/video" ]]; then
     source_element="v4l2src device=$input_source name=src_0 ! decodebin ! videoflip video-direction=horiz ! videoconvert qos=false n-threads=4"
     internal_offset=false
 else
-    source_element="filesrc location=$input_source name=src_0 ! decodebin ! queue ! $opengl_covnert"
+    source_element="filesrc location=$input_source name=src_0 ! decodebin ! queue max_size_buffers=30 max-size-bytes=0 max-size-time=0 ! videoconvert ! video/x-raw,format=RGBA ! queue ! videoscale ! rawvideoparse format=rgba width=1280 height=720 ! queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! $opengl_covnert"
     internal_offset=true
 fi
 
@@ -121,7 +120,7 @@ PIPELINE="gst-launch-1.0 $source_element ! queue ! tee name=t hailomuxer name=hm
     agg. ! queue leaky=no max-size-buffers=3 max-size-bytes=0 max-size-time=0 ! \
     hailooverlay qos=false ! \
     queue leaky=no max-size-buffers=3 max-size-bytes=0 max-size-time=0 ! videoconvert ! \
-    kmssink bus-id=fd4a0000.display fullscreen-overlay=1"
+    kmssink bus-id=fd4a0000.display fullscreen-overlay=1 sync=false"
 
 echo "Running $network_name"
 echo ${PIPELINE}

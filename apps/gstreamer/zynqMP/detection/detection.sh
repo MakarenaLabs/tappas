@@ -61,16 +61,26 @@ init_variables $@
 parse_args $@
 
 PIPELINE="gst-launch-1.0 \
-    v4l2src device=$input_source ! decodebin ! \
-    queue leaky=downstream max-size-buffers=5 max-size-bytes=0 max-size-time=0 ! \
-    hailonet hef-path=$hef_path is-active=true ! \
-    queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
-    hailofilter function-name=$network_name config-path=$json_config_path so-path=$postprocess_so qos=false ! \
-    queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
-    hailooverlay ! \
-    queue leaky=downstream max-size-buffers=5 max-size-bytes=0 max-size-time=0 ! \
-    videoconvert ! \
-    kmssink bus-id=fd4a0000.display fullscreen-overlay=1"
+    v4l2src device=$input_source name=src_0 \
+	! decodebin \
+    ! videoflip video-direction=horiz \
+	! videoconvert qos=false n-threads=4 \
+	! queue \
+	! tee name=t hailomuxer name=hmux t. \
+	! queue leaky=no max-size-buffers=3 max-size-bytes=0 max-size-time=0 \
+	! hmux. t. \
+	! videoscale qos=false n-threads=3 \
+	! queue leaky=no max-size-buffers=3 max-size-bytes=0 max-size-time=0 \
+	! hailonet hef-path=/home/root/apps/detection/resources/yolov5m_yuv.hef is-active=true vdevice-key=1 \
+	! queue leaky=no max-size-buffers=3 max-size-bytes=0 max-size-time=0 \
+	! hailofilter function-name=yolov5 config-path=/home/root/apps/detection/resources/configs/yolov5.json so-path=/usr/lib/hailo-post-processes/libyolo_post.so qos=false \
+	! queue leaky=no max-size-buffers=3 max-size-bytes=0 max-size-time=0 \
+	! hmux. hmux. \
+	! queue leaky=no max-size-buffers=3 max-size-bytes=0 max-size-time=0 \
+	! hailooverlay qos=false \
+	! queue leaky=no max-size-buffers=3 max-size-bytes=0 max-size-time=0 \
+	! videoconvert \
+	! kmssink bus-id=fd4a0000.display fullscreen-overlay=1"
 
 echo "Running $network_name"
 echo ${PIPELINE}

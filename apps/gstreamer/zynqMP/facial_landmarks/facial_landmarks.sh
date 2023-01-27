@@ -9,7 +9,7 @@ function init_variables() {
     readonly POSTPROCESS_DIR="/usr/lib/hailo-post-processes"
     readonly RESOURCES_DIR="${CURRENT_DIR}/resources"
     readonly DEFAULT_POSTPROCESS_SO="$POSTPROCESS_DIR/libfacial_landmarks_post.so"
-    readonly DEFAULT_VIDEO_SOURCE="/dev/video0"
+    readonly DEFAULT_VIDEO_SOURCE="${RESOURCES_DIR}/faces_120_120.mp4"
     readonly DEFAULT_HEF_PATH="${RESOURCES_DIR}/tddfa_mobilenet_v1.hef"
 
     hef_path=$DEFAULT_HEF_PATH
@@ -75,6 +75,14 @@ fi
 PIPELINE="gst-launch-1.0 \
     filesrc location=$input_source name=src_0 ! decodebin ! \
     queue max_size_buffers=30 max-size-bytes=0 max-size-time=0 ! \
+	videoconvert ! \
+	video/x-raw,format=RGBA ! \
+	queue ! \
+	videoscale ! \
+	rawvideoparse format=rgba width=1280 height=720 ! \
+	queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
+	\
+	\
     glupload ! \
     queue max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
     glcolorscale ! \
@@ -89,6 +97,8 @@ PIPELINE="gst-launch-1.0 \
     queue max_size_buffers=30 max-size-bytes=0 max-size-time=0 ! \
     hailooverlay ! videoconvert qos=false ! \
     queue max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! \
+	videoscale ! \
+	video/x-raw,width=1280,height=720 ! \
     kmssink bus-id=fd4a0000.display fullscreen-overlay=1"
 
 echo ${PIPELINE}
