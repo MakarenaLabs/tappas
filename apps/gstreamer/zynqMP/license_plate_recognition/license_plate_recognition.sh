@@ -3,7 +3,7 @@ gst-launch-1.0 filesrc location=resources/lpr.raw name=src_0 \
 ! queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 \
 ! hailonet hef-path=resources/yolov5m_vehicles_no_ddr_yuy2.hef vdevice-key=1 scheduling-algorithm=1 \
 ! queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 \
-! hailofilter so-path=/usr/lib/hailo-post-processes/libyolo_post.so config-path=configs/yolov5_vehicle_detection.json function-name=yolov5_vehicles_only qos=false \
+! hailofilter so-path=/usr/lib/hailo-post-processes/libyolo_post.so config-path=resources/configs/yolov5_vehicle_detection.json function-name=yolov5_vehicles_only qos=false \
 ! queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 \
 ! hailotracker name=hailo_tracker kalman-dist-thr=.5 iou-thr=.6 keep-tracked-frames=2 keep-lost-frames=2 \
 ! queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 \
@@ -23,7 +23,7 @@ gst-launch-1.0 filesrc location=resources/lpr.raw name=src_0 \
 ! queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 \
 ! hailonet hef-path=resources/tiny_yolov4_license_plates_yuy2.hef vdevice-key=1 scheduling-algorithm=1 \
 ! queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 \
-! hailofilter so-path=/usr/lib/hailo-post-processes/libyolo_post.so config-path=configs/yolov4_licence_plate.json function-name=tiny_yolov4_license_plates qos=false \
+! hailofilter so-path=/usr/lib/hailo-post-processes/libyolo_post.so config-path=resources/configs/yolov4_licence_plate.json function-name=tiny_yolov4_license_plates qos=false \
 ! queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 \
 ! agg1. agg1. \
 ! queue leaky=no max-size-buffers=30 max-size-bytes=0 max-size-time=0 \
